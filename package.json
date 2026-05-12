@@ -1,0 +1,48 @@
+{
+  "name": "ai-cms",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "build:cf": "opennextjs-cloudflare build",
+    "build:pages": "npm run build:cf && node scripts/prepare-pages.mjs",
+    "deploy": "npm run build:pages && wrangler pages deploy dist --project-name ai-cms --branch main",
+    "preview": "opennextjs-cloudflare preview",
+    "migrate:local": "wrangler d1 execute cms-db --local --file",
+    "migrate:remote": "wrangler d1 execute cms-db --file",
+    "migrate": "node scripts/migrate.js",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv env.d.ts"
+  },
+  "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
+    "@tiptap/extension-character-count": "^2.11.5",
+    "@tiptap/extension-image": "^2.11.5",
+    "@tiptap/extension-link": "^2.11.5",
+    "@tiptap/extension-placeholder": "^2.11.5",
+    "@tiptap/react": "^2.11.5",
+    "@tiptap/starter-kit": "^2.11.5",
+    "esbuild": "^0.28.0",
+    "jose": "^5.10.0",
+    "marked": "^18.0.3",
+    "nanoid": "^5.1.5",
+    "next": "^16.2.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "slugify": "^1.6.6",
+    "zod": "^3.24.3"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260509.1",
+    "@opennextjs/cloudflare": "^1.19.8",
+    "@tailwindcss/postcss": "^4.1.6",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "^16.2.6",
+    "tailwindcss": "^4.1.6",
+    "typescript": "^5",
+    "wrangler": "^4.90.0"
+  }
+}
