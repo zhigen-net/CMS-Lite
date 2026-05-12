@@ -347,11 +347,12 @@ export async function getContentWithMeta(db: D1Database, id: string): Promise<Co
 export async function getContentBySlugWithMeta(db: D1Database, type: string, slug: string): Promise<Content | null> {
   const content = await getContentBySlug(db, type, slug)
   if (!content) return null
-  const [tags, categories] = await Promise.all([
+  const [tags, categories, author] = await Promise.all([
     getTagsByContent(db, content.id),
     getCategoriesByContent(db, content.id),
+    content.author_id ? getUserById(db, content.author_id) : Promise.resolve(null),
   ])
-  return { ...content, tags, categories }
+  return { ...content, tags, categories, ...(author ? { author } : {}) }
 }
 
 export async function getRelatedPosts(db: D1Database, postId: string, limit = 4): Promise<Content[]> {
@@ -382,7 +383,13 @@ export async function getRelatedPosts(db: D1Database, postId: string, limit = 4)
     for (const r of rows.results) { if (!seen.has(r.content_id)) { seen.add(r.content_id); candidates.push(r.content_id) } }
   }
 
-  if (candidates.length === 0) return []
+  if (candidates.length === 0) {
+    // 无分类/标签关联时，回退到最新文章
+    const rows = await db.prepare(
+      `SELECT * FROM contents WHERE id != ? AND type = 'post' AND status = 'published' ORDER BY published_at DESC LIMIT ?`
+    ).bind(postId, limit).all<Content>()
+    return rows.results
+  }
   const ids = candidates.slice(0, limit * 2)
   const ph = ids.map(() => '?').join(',')
   const rows = await db.prepare(

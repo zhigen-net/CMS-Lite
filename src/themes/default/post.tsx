@@ -126,6 +126,25 @@ export default function DefaultPost({ post, settings, related = [] }: Props) {
                   onMouseLeave={e => ((e.currentTarget as HTMLElement).style.opacity = '1')}
                 >{cat.name}</Link>
               ))}
+              {post.author && (
+                <Link href={`/author/${post.author.id}`} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
+                  textDecoration: 'none', color: 'var(--color-text-secondary)',
+                  transition: 'color 0.15s',
+                } as CSSProperties}
+                  onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = 'var(--color-text)')}
+                  onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = 'var(--color-text-secondary)')}
+                >
+                  {post.author.avatar ? (
+                    <img src={post.author.avatar} alt={post.author.name} style={{ width: '20px', height: '20px', borderRadius: '50%', objectFit: 'cover' }} />
+                  ) : (
+                    <span style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'var(--color-primary)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 700, flexShrink: 0 }}>
+                      {post.author.name.slice(0, 1).toUpperCase()}
+                    </span>
+                  )}
+                  <span style={{ fontSize: '0.8rem' }}>{post.author.name}</span>
+                </Link>
+              )}
               {date && <span>{date}</span>}
               {readTime > 0 && (
                 <>
