@@ -5,6 +5,7 @@ import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getSiteSettings } from '@/lib/config'
 import Header from '@/themes/default/components/Header'
 import Footer from '@/themes/default/components/Footer'
+import MobileBottomNav from '@/themes/default/components/MobileBottomNav'
 import type { SiteSettings } from '@/types'
 
 type PartialSettings = Partial<SiteSettings>
@@ -117,6 +118,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       {children}
       {footerHtml && <div dangerouslySetInnerHTML={{ __html: footerHtml }} />}
       <Footer settings={settings} />
+      <MobileBottomNav />
       {customJs && <script dangerouslySetInnerHTML={{ __html: customJs }} />}
     </>
   )
