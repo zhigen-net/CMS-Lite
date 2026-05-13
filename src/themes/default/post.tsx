@@ -38,11 +38,13 @@ export default function DefaultPost({ post, settings, related = [] }: Props) {
         @media(max-width:640px){
           .post-cover{max-height:240px!important}
           .post-cover img{height:240px!important}
-          .post-layout{padding:2rem 1.25rem 4rem!important;grid-template-columns:1fr!important}
+          .post-layout{padding:1.5rem 1.25rem 4rem!important;grid-template-columns:1fr!important;gap:0!important}
           .post-toc{display:none!important}
+          .post-header-meta{flex-direction:column;align-items:flex-start!important;gap:0.5rem!important}
         }
         @media(max-width:1024px){
           .post-toc{display:none!important}
+          .post-layout{grid-template-columns:1fr!important}
         }
       `}</style>
       {/* Cover image */}
@@ -110,7 +112,7 @@ export default function DefaultPost({ post, settings, related = [] }: Props) {
               </p>
             )}
 
-            <div style={{
+            <div className="post-header-meta" style={{
               display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem',
               fontSize: '0.85rem', color: 'var(--color-text-secondary)',
               paddingBottom: '2rem', borderBottom: '1px solid var(--color-border)',

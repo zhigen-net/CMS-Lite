@@ -157,6 +157,8 @@ export default function PostCard({ post, featured = false, category }: Props) {
             fontFamily: 'var(--font-heading)', fontSize: '1.05rem', fontWeight: 700,
             lineHeight: 1.4, letterSpacing: '-0.01em', color: 'var(--color-text)',
             marginBottom: '0.5rem', transition: 'color 0.15s',
+            display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const,
+            overflow: 'hidden',
           }}
             onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = 'var(--color-primary)')}
             onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = 'var(--color-text)')}

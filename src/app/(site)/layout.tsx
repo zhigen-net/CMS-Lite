@@ -41,6 +41,8 @@ function buildCssVars(settings: PartialSettings): string {
 }
 
 const proseStyles = `
+  .hide-scrollbar::-webkit-scrollbar { display: none; }
+
   .prose h1,.prose h2,.prose h3,.prose h4 {
     font-family: var(--font-heading);
     font-weight: 700;

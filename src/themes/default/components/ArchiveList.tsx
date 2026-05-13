@@ -81,8 +81,10 @@ export default function ArchiveList({ title, slug, description, posts, type, pag
             maxWidth: 'var(--max-width)', margin: '0 auto',
             padding: '0 1.5rem',
             overflowX: 'auto', display: 'flex', alignItems: 'center', gap: '0.25rem',
-            scrollbarWidth: 'none',
-          } as React.CSSProperties}>
+            scrollbarWidth: 'none', msOverflowStyle: 'none',
+          } as React.CSSProperties}
+            className="hide-scrollbar"
+          >
             {siblings.map(s => {
               const active = s.slug === slug
               const href = type === 'category'

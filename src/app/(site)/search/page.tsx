@@ -4,6 +4,7 @@ import { getSiteSettings } from '@/lib/config'
 import type { Metadata } from 'next'
 import type { Category } from '@/types'
 import PostCard from '@/themes/default/components/PostCard'
+import PaginationNav from '@/components/PaginationNav'
 import SearchBox from './SearchBox'
 
 interface Props { searchParams: Promise<{ q?: string; page?: string }> }
@@ -72,23 +73,13 @@ export default async function SearchPage({ searchParams }: Props) {
                 ))}
               </div>
 
-              {/* Pagination */}
-              {pagination.totalPages > 1 && (
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginTop: '2rem' }}>
-                  {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(p => (
-                    <a key={p} href={`/search?q=${encodeURIComponent(query)}&page=${p}`} style={{
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      width: '36px', height: '36px', borderRadius: '8px',
-                      fontSize: '0.875rem', fontWeight: p === page ? 600 : 400,
-                      textDecoration: 'none',
-                      background: p === page ? 'var(--color-text)' : 'transparent',
-                      color: p === page ? '#fff' : 'var(--color-text-secondary)',
-                      border: `1px solid ${p === page ? 'var(--color-text)' : 'var(--color-border)'}`,
-                      transition: 'background 0.15s, color 0.15s',
-                    }}>{p}</a>
-                  ))}
-                </div>
-              )}
+              <PaginationNav
+                page={pagination.page}
+                totalPages={pagination.totalPages}
+                total={pagination.total}
+                pageSize={pagination.pageSize}
+                buildHref={p => `/search?q=${encodeURIComponent(query)}&page=${p}`}
+              />
             </>
           ) : (
             <div style={{ textAlign: 'center', padding: '5rem 0', color: 'var(--color-text-secondary)' }}>

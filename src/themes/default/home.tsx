@@ -70,8 +70,11 @@ export default function DefaultHome({ posts, settings, categories = [], category
             padding: '0 1.5rem',
             overflowX: 'auto',
             display: 'flex', alignItems: 'center', gap: '0.25rem',
-            scrollbarWidth: 'none',
-          } as React.CSSProperties}>
+            scrollbarWidth: 'none', msOverflowStyle: 'none',
+          } as React.CSSProperties}
+            // hide webkit scrollbar via inline class
+            className="hide-scrollbar"
+          >
             <Link href="/" style={{
               display: 'inline-flex', alignItems: 'center',
               padding: '0.75rem 1rem',

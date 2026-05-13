@@ -42,7 +42,7 @@ export default function TableOfContents({ contentSelector = '.prose' }: { conten
       }}>目录</p>
       <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
         {items.map(item => (
-          <li key={item.id} style={{ paddingLeft: `${(item.level - 2) * 0.875}rem` }}>
+          <li key={item.id}>
             <a
               href={`#${item.id}`}
               style={{

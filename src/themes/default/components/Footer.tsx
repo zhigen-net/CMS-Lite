@@ -13,8 +13,16 @@ export default function Footer({ settings }: Props) {
 
   return (
     <footer style={{ borderTop: '1px solid var(--color-border)', marginTop: '6rem' }}>
+      <style>{`
+        .footer-grid { display: grid; grid-template-columns: 1fr auto; gap: 3rem; margin-bottom: 3rem; align-items: start; }
+        .footer-nav { display: flex; flex-direction: column; gap: 0.625rem; align-items: flex-end; }
+        @media(max-width:640px){
+          .footer-grid { grid-template-columns: 1fr; gap: 2rem; }
+          .footer-nav { align-items: flex-start; flex-direction: row; flex-wrap: wrap; gap: 0.75rem 1.25rem; }
+        }
+      `}</style>
       <div style={{ maxWidth: 'var(--max-width)', margin: '0 auto', padding: '3rem 1.5rem 2.5rem' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '3rem', marginBottom: '3rem', alignItems: 'start' }}>
+        <div className="footer-grid">
           <div style={{ maxWidth: '320px' }}>
             <Link href="/" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: '1.1rem', color: 'var(--color-text)', textDecoration: 'none', letterSpacing: '-0.02em', display: 'block', marginBottom: '0.625rem' }}>
               {siteName}
@@ -26,7 +34,7 @@ export default function Footer({ settings }: Props) {
             )}
           </div>
           {navItems.length > 0 && (
-            <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', alignItems: 'flex-end' }}>
+            <nav className="footer-nav">
               {navItems.map(item => (
                 <Link
                   key={item.id}

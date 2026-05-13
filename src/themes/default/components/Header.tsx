@@ -44,7 +44,7 @@ export default function Header({ settings }: Props) {
 
           {/* Desktop nav */}
           {navItems.length > 0 && (
-            <nav style={{ display: 'flex', alignItems: 'center', gap: '0.125rem', flex: 1 }}>
+            <nav style={{ display: 'flex', alignItems: 'center', gap: '0.125rem' }} className="header-desktop-nav">
               {navItems.map(item => (
                 <Link
                   key={item.id}
@@ -66,6 +66,7 @@ export default function Header({ settings }: Props) {
           )}
 
           <div style={{ flex: 1 }} />
+
 
           {/* Search icon */}
           <Link href="/search" style={{
@@ -108,6 +109,10 @@ export default function Header({ settings }: Props) {
           @media(min-width:768px){
             .header-menu-btn{display:none!important}
             .header-admin-link{display:flex!important;align-items:center}
+            .header-desktop-nav{display:flex!important}
+          }
+          @media(max-width:767px){
+            .header-desktop-nav{display:none!important}
           }
         `}</style>
       </header>
