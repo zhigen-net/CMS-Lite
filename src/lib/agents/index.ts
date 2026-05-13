@@ -8,7 +8,8 @@ export type AgentType = 'content' | 'seo'
 
 export async function runAgent(
   type: AgentType,
-  env: CloudflareEnv
+  env: CloudflareEnv,
+  userId?: string
 ): Promise<{ taskId: string; result: AgentResult }> {
   const db = env.DB
   const taskId = generateId()
@@ -18,7 +19,7 @@ export async function runAgent(
   await updateAITask(db, taskId, { status: 'running' })
 
   try {
-    const ctx = { db, env, taskId }
+    const ctx = { db, env, taskId, userId }
     const result = type === 'content'
       ? await runContentAgent(ctx)
       : await runSEOAgent(ctx)

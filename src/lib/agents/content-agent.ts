@@ -89,7 +89,7 @@ async function runPlan(
     bodyImageSource: 'none' | 'unsplash' | 'ai'; siteTopics: string; targetAudience: string; avoidTopics: string
     topicModel: string; contentModel: string; seoModel: string
     topicPrompt: string; systemPrompt: string; userPrompt: string
-    existingTitles: string[]
+    existingTitles: string[]; userId?: string
   }
 ) {
   const generated: { id: string; title: string; slug: string; status: string; coverGenerated: boolean; categoryId: string | null }[] = []
@@ -178,7 +178,7 @@ async function runPlan(
         title: article.title, slug,
         content: linkedContent, excerpt: article.excerpt,
         status: shared.autoPublish ? 'published' : 'draft',
-        author_id: null, cover_image: coverImage,
+        author_id: shared.userId ?? null, cover_image: coverImage,
         parent_id: null, sort_order: 0,
         published_at: shared.autoPublish ? now : null, scheduled_at: null,
         meta_title: seo.metaTitle || article.title,
@@ -205,7 +205,7 @@ async function runPlan(
   return { generated, errors, topicsFound: topics.length }
 }
 
-export async function runContentAgent({ db, env, taskId }: AgentRunOptions): Promise<AgentResult> {
+export async function runContentAgent({ db, env, taskId, userId }: AgentRunOptions): Promise<AgentResult> {
   void taskId
 
   const settings = await getSiteSettings(db)
@@ -236,7 +236,7 @@ export async function runContentAgent({ db, env, taskId }: AgentRunOptions): Pro
     siteName, writingStyle, length, autoPublish,
     imageSource, unsplashKey, bodyImageSource, siteTopics,
     targetAudience, avoidTopics, topicModel, contentModel, seoModel,
-    topicPrompt, systemPrompt, userPrompt, existingTitles,
+    topicPrompt, systemPrompt, userPrompt, existingTitles, userId,
   }
 
   const allGenerated: { id: string; title: string; slug: string; status: string; coverGenerated: boolean; categoryId: string | null }[] = []

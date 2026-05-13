@@ -8,4 +8,5 @@ export interface AgentRunOptions {
   db: D1Database
   env: CloudflareEnv
   taskId: string
+  userId?: string
 }

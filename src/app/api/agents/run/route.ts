@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   if (!parsed.success) return Response.json({ error: '无效参数' }, { status: 400 })
 
   const { agent } = parsed.data
-  const { taskId, result } = await runAgent(agent as AgentType, env)
+  const { taskId, result } = await runAgent(agent as AgentType, env, user!.userId)
 
   return Response.json({ taskId, ...result }, { status: result.success ? 200 : 500 })
 }
