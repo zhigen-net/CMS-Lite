@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getCategories, getTagsWithCount } from '@/lib/db'
 import type { Metadata } from 'next'
