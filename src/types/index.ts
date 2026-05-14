@@ -101,6 +101,42 @@ export interface Media {
   created_at: number
 }
 
+export interface FormField {
+  key: string
+  label: string
+  type: 'text' | 'email' | 'tel' | 'textarea' | 'select' | 'checkbox' | 'number' | 'url'
+  placeholder?: string
+  required: boolean
+  options?: string[]
+}
+
+export interface Form {
+  id: string
+  name: string
+  slug: string
+  description: string
+  fields: FormField[]
+  webhook_url: string
+  webhook_headers: Record<string, string>
+  webhook_field_map: Record<string, string>
+  submit_message: string
+  status: 'active' | 'paused'
+  created_at: number
+  updated_at: number
+}
+
+export interface FormSubmission {
+  id: string
+  form_id: string
+  data: Record<string, unknown>
+  source_url: string
+  ip: string
+  webhook_status: 'pending' | 'sent' | 'failed' | 'skipped'
+  webhook_sent_at: number | null
+  webhook_response: string
+  created_at: number
+}
+
 export interface Plugin {
   id: string
   name: string

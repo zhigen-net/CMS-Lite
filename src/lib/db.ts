@@ -1,4 +1,4 @@
-import type { Content, ContentType, Category, Tag, User, Media, Plugin, ListResult, AITask, AITaskType, AITaskStatus } from '@/types'
+import type { Content, ContentType, Category, Tag, User, Media, Plugin, ListResult, AITask, AITaskType, AITaskStatus, Form, FormSubmission } from '@/types'
 
 export function getDB(env: CloudflareEnv): D1Database {
   return env.DB
@@ -589,4 +589,123 @@ export async function getPlugins(db: D1Database): Promise<Plugin[]> {
 
 export async function setPluginEnabled(db: D1Database, id: string, enabled: boolean): Promise<void> {
   await db.prepare('UPDATE plugins SET enabled = ?, updated_at = unixepoch() WHERE id = ?').bind(enabled ? 1 : 0, id).run()
+}
+
+// ── 表单 ────────────────────────────────────────────────────
+
+function parseForm(r: Record<string, unknown>): Form {
+  return {
+    id: r.id as string,
+    name: r.name as string,
+    slug: r.slug as string,
+    description: (r.description as string) || '',
+    fields: JSON.parse((r.fields as string) || '[]'),
+    webhook_url: (r.webhook_url as string) || '',
+    webhook_headers: JSON.parse((r.webhook_headers as string) || '{}'),
+    webhook_field_map: JSON.parse((r.webhook_field_map as string) || '{}'),
+    submit_message: (r.submit_message as string) || '提交成功！我们会尽快与您联系。',
+    status: (r.status as 'active' | 'paused') || 'active',
+    created_at: r.created_at as number,
+    updated_at: r.updated_at as number,
+  }
+}
+
+function parseSubmission(r: Record<string, unknown>): FormSubmission {
+  return {
+    id: r.id as string,
+    form_id: r.form_id as string,
+    data: JSON.parse((r.data as string) || '{}'),
+    source_url: (r.source_url as string) || '',
+    ip: (r.ip as string) || '',
+    webhook_status: (r.webhook_status as FormSubmission['webhook_status']) || 'pending',
+    webhook_sent_at: (r.webhook_sent_at as number | null) ?? null,
+    webhook_response: (r.webhook_response as string) || '',
+    created_at: r.created_at as number,
+  }
+}
+
+export async function getForms(db: D1Database): Promise<Form[]> {
+  const rows = await db.prepare('SELECT * FROM forms ORDER BY created_at DESC').all<Record<string, unknown>>()
+  return rows.results.map(parseForm)
+}
+
+export async function getFormById(db: D1Database, id: string): Promise<Form | null> {
+  const row = await db.prepare('SELECT * FROM forms WHERE id = ?').bind(id).first<Record<string, unknown>>()
+  return row ? parseForm(row) : null
+}
+
+export async function getFormBySlug(db: D1Database, slug: string): Promise<Form | null> {
+  const row = await db.prepare('SELECT * FROM forms WHERE slug = ?').bind(slug).first<Record<string, unknown>>()
+  return row ? parseForm(row) : null
+}
+
+export async function createForm(db: D1Database, data: Omit<Form, 'created_at' | 'updated_at'>): Promise<void> {
+  await db.prepare(`
+    INSERT INTO forms (id, name, slug, description, fields, webhook_url, webhook_headers, webhook_field_map, submit_message, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    data.id, data.name, data.slug, data.description,
+    JSON.stringify(data.fields), data.webhook_url,
+    JSON.stringify(data.webhook_headers), JSON.stringify(data.webhook_field_map),
+    data.submit_message, data.status,
+  ).run()
+}
+
+export async function updateForm(db: D1Database, id: string, data: Partial<Omit<Form, 'id' | 'created_at' | 'updated_at'>>): Promise<void> {
+  const map: Record<string, unknown> = {}
+  if (data.name !== undefined) map.name = data.name
+  if (data.slug !== undefined) map.slug = data.slug
+  if (data.description !== undefined) map.description = data.description
+  if (data.fields !== undefined) map.fields = JSON.stringify(data.fields)
+  if (data.webhook_url !== undefined) map.webhook_url = data.webhook_url
+  if (data.webhook_headers !== undefined) map.webhook_headers = JSON.stringify(data.webhook_headers)
+  if (data.webhook_field_map !== undefined) map.webhook_field_map = JSON.stringify(data.webhook_field_map)
+  if (data.submit_message !== undefined) map.submit_message = data.submit_message
+  if (data.status !== undefined) map.status = data.status
+  if (Object.keys(map).length === 0) return
+  const sets = Object.keys(map).map(k => `${k} = ?`).join(', ')
+  await db.prepare(`UPDATE forms SET ${sets}, updated_at = unixepoch() WHERE id = ?`).bind(...Object.values(map), id).run()
+}
+
+export async function deleteForm(db: D1Database, id: string): Promise<void> {
+  await db.prepare('DELETE FROM forms WHERE id = ?').bind(id).run()
+}
+
+export async function getFormSubmissions(db: D1Database, formId: string, page = 1, pageSize = 20): Promise<{ items: FormSubmission[]; total: number }> {
+  const offset = (page - 1) * pageSize
+  const [rows, countRow] = await Promise.all([
+    db.prepare('SELECT * FROM form_submissions WHERE form_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?').bind(formId, pageSize, offset).all<Record<string, unknown>>(),
+    db.prepare('SELECT COUNT(*) as total FROM form_submissions WHERE form_id = ?').bind(formId).first<{ total: number }>(),
+  ])
+  return { items: rows.results.map(parseSubmission), total: countRow?.total ?? 0 }
+}
+
+export async function createFormSubmission(db: D1Database, data: Omit<FormSubmission, 'created_at'>): Promise<void> {
+  await db.prepare(`
+    INSERT INTO form_submissions (id, form_id, data, source_url, ip, webhook_status, webhook_sent_at, webhook_response)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    data.id, data.form_id, JSON.stringify(data.data),
+    data.source_url, data.ip, data.webhook_status,
+    data.webhook_sent_at, data.webhook_response,
+  ).run()
+}
+
+export async function updateFormSubmission(db: D1Database, id: string, data: Partial<Pick<FormSubmission, 'webhook_status' | 'webhook_sent_at' | 'webhook_response'>>): Promise<void> {
+  const map: Record<string, unknown> = {}
+  if (data.webhook_status !== undefined) map.webhook_status = data.webhook_status
+  if (data.webhook_sent_at !== undefined) map.webhook_sent_at = data.webhook_sent_at
+  if (data.webhook_response !== undefined) map.webhook_response = data.webhook_response
+  if (Object.keys(map).length === 0) return
+  const sets = Object.keys(map).map(k => `${k} = ?`).join(', ')
+  await db.prepare(`UPDATE form_submissions SET ${sets} WHERE id = ?`).bind(...Object.values(map), id).run()
+}
+
+export async function deleteFormSubmission(db: D1Database, id: string): Promise<void> {
+  await db.prepare('DELETE FROM form_submissions WHERE id = ?').bind(id).run()
+}
+
+export async function getFormSubmissionById(db: D1Database, id: string): Promise<FormSubmission | null> {
+  const row = await db.prepare('SELECT * FROM form_submissions WHERE id = ?').bind(id).first<Record<string, unknown>>()
+  return row ? parseSubmission(row) : null
 }

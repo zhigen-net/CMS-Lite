@@ -4,10 +4,11 @@ import { useState } from 'react'
 import type { Plugin } from '@/types'
 import {
   BarChartIcon, ClockIcon, ListIcon, GlobeIcon, SearchIcon,
-  LinkIcon, SparklesIcon, ImageIcon, EyeIcon, PuzzleIcon,
+  LinkIcon, SparklesIcon, ImageIcon, EyeIcon, PuzzleIcon, ClipboardIcon,
 } from '@/components/icons'
+import Link from 'next/link'
 
-const PLUGIN_META: Record<string, { desc: string; icon: React.ComponentType<{size?: number}>; requiresAI?: boolean }> = {
+const PLUGIN_META: Record<string, { desc: string; icon: React.ComponentType<{size?: number}>; requiresAI?: boolean; manageHref?: string }> = {
   'seo-analyzer':     { icon: BarChartIcon, desc: '分析文章 SEO 质量，给出评分和优化建议' },
   'reading-time':     { icon: ClockIcon, desc: '自动计算并展示文章预计阅读时长' },
   'toc':              { icon: ListIcon, desc: '为长文章自动生成目录导航' },
@@ -17,6 +18,7 @@ const PLUGIN_META: Record<string, { desc: string; icon: React.ComponentType<{siz
   'ai-writer':        { icon: SparklesIcon, desc: '编辑器内嵌 AI 写作助手', requiresAI: true },
   'og-image':         { icon: ImageIcon, desc: '自动为文章生成 Open Graph 封面图', requiresAI: true },
   'ai-alt':           { icon: EyeIcon, desc: '自动为上传图片生成 Alt 描述文字', requiresAI: true },
+  'form-builder':     { icon: ClipboardIcon, desc: '可视化表单构建，收集用户信息并推送至 CRM', manageHref: '/admin/forms' },
 }
 
 interface Props { initialPlugins: Plugin[] }
@@ -100,6 +102,11 @@ export default function PluginsClient({ initialPlugins }: Props) {
                 </div>
                 <p style={{ fontSize: '0.78rem', color: '#71717a', lineHeight: 1.5 }}>{meta?.desc}</p>
               </div>
+              {meta?.manageHref && plugin.enabled && (
+                <Link href={meta.manageHref} style={{ fontSize: '0.78rem', padding: '0.3rem 0.75rem', borderRadius: '6px', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)', textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  管理
+                </Link>
+              )}
               <Toggle
                 on={plugin.enabled}
                 onClick={() => handleToggle(plugin)}

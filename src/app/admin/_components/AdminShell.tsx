@@ -8,7 +8,7 @@ import {
   HomeIcon, FileTextIcon, FilesIcon, ImageIcon, BotIcon,
   PaletteIcon, PuzzleIcon, SettingsIcon, ExternalLinkIcon,
   MenuIcon, XIcon, UsersIcon, UserIcon, KeyIcon, LogOutIcon,
-  FolderIcon, TagIcon, LayersIcon,
+  FolderIcon, TagIcon, LayersIcon, ClipboardIcon,
 } from '@/components/icons'
 
 const NAV = [
@@ -19,6 +19,7 @@ const NAV = [
   { href: '/admin/categories', label: '分类', icon: FolderIcon },
   { href: '/admin/tags', label: '标签', icon: TagIcon },
   { href: '/admin/media', label: '媒体', icon: ImageIcon },
+  { href: '/admin/forms', label: '表单', icon: ClipboardIcon },
   { href: '/admin/ai', label: 'AI 运营', icon: BotIcon },
   { href: '/admin/appearance', label: '外观', icon: PaletteIcon },
   { href: '/admin/plugins', label: '插件', icon: PuzzleIcon },
