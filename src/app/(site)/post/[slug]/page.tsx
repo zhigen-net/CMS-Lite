@@ -5,7 +5,7 @@ import DefaultPost from '@/themes/default/post'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { marked, type Tokens } from 'marked'
-import { processFormEmbeds } from '@/lib/formEmbed'
+import { preprocessFormShortcodes, processFormEmbeds } from '@/lib/formEmbed'
 
 function buildMarked() {
   const renderer = new marked.Renderer()
@@ -41,8 +41,10 @@ export default async function PostPage({ params }: Props) {
   if (!post || post.status !== 'published') notFound()
 
   buildMarked()
-  const rawHtml = post.content ? await marked.parse(post.content) : ''
-  const { html: htmlContent, slugs: formSlugs } = processFormEmbeds(rawHtml)
+  const { markdown: preprocessed, slugs: preSlugs } = preprocessFormShortcodes(post.content ?? '')
+  const rawHtml = preprocessed ? await marked.parse(preprocessed) : ''
+  const { html: htmlContent, slugs: postSlugs } = processFormEmbeds(rawHtml)
+  const formSlugs = [...new Set([...preSlugs, ...postSlugs])]
 
   const [related, ...embeddedForms] = await Promise.all([
     getRelatedPosts(env.DB, post.id, 3),

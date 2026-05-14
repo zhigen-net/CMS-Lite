@@ -5,7 +5,7 @@ import DefaultPost from '@/themes/default/post'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { marked, type Tokens } from 'marked'
-import { processFormEmbeds } from '@/lib/formEmbed'
+import { preprocessFormShortcodes, processFormEmbeds } from '@/lib/formEmbed'
 
 function buildMarked() {
   const renderer = new marked.Renderer()
@@ -41,8 +41,10 @@ export default async function PagePage({ params }: Props) {
   if (!page || page.status !== 'published') notFound()
 
   buildMarked()
-  const rawHtml = page.content ? await marked.parse(page.content) : ''
-  const { html: htmlContent, slugs: formSlugs } = processFormEmbeds(rawHtml)
+  const { markdown: preprocessed, slugs: preSlugs } = preprocessFormShortcodes(page.content ?? '')
+  const rawHtml = preprocessed ? await marked.parse(preprocessed) : ''
+  const { html: htmlContent, slugs: postSlugs } = processFormEmbeds(rawHtml)
+  const formSlugs = [...new Set([...preSlugs, ...postSlugs])]
   const embeddedForms = (await Promise.all(formSlugs.map(s => getFormBySlug(env.DB, s)))).filter(Boolean)
 
   return <DefaultPost post={{ ...page, content: htmlContent }} settings={settings} embeddedForms={embeddedForms as NonNullable<typeof embeddedForms[0]>[]} />
