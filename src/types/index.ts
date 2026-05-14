@@ -67,6 +67,7 @@ export interface Category {
   description: string | null
   cover_image: string | null
   created_at: number
+  sort_order: number
 }
 
 export interface Tag {

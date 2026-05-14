@@ -226,7 +226,7 @@ export async function deleteContent(db: D1Database, id: string): Promise<void> {
 // ── 分类 ────────────────────────────────────────────────────
 
 export async function getCategories(db: D1Database, contentType: string): Promise<Category[]> {
-  const rows = await db.prepare('SELECT * FROM categories WHERE content_type = ? ORDER BY name').bind(contentType).all<Category>()
+  const rows = await db.prepare('SELECT * FROM categories WHERE content_type = ? ORDER BY sort_order ASC, name ASC').bind(contentType).all<Category>()
   return rows.results
 }
 
@@ -249,6 +249,10 @@ export async function updateCategory(db: D1Database, id: string, data: { name?: 
 export async function deleteCategory(db: D1Database, id: string): Promise<void> {
   await db.prepare('DELETE FROM content_categories WHERE category_id = ?').bind(id).run()
   await db.prepare('DELETE FROM categories WHERE id = ?').bind(id).run()
+}
+
+export async function updateCategorySortOrders(db: D1Database, orders: { id: string; sort_order: number }[]): Promise<void> {
+  await db.batch(orders.map(o => db.prepare('UPDATE categories SET sort_order = ? WHERE id = ?').bind(o.sort_order, o.id)))
 }
 
 // ── 标签 ────────────────────────────────────────────────────

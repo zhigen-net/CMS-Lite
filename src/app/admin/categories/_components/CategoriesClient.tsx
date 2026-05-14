@@ -18,6 +18,22 @@ const inp: React.CSSProperties = {
 
 type ModalMode = { type: 'create' } | { type: 'edit'; item: Category }
 
+function ChevronUpIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="18 15 12 9 6 15" />
+    </svg>
+  )
+}
+
+function ChevronDownIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  )
+}
+
 export default function CategoriesClient({ initialPost, initialPage }: Props) {
   const [tab, setTab] = useState<'post' | 'page'>('post')
   const [postCats, setPostCats] = useState(initialPost)
@@ -28,6 +44,7 @@ export default function CategoriesClient({ initialPost, initialPage }: Props) {
   const [description, setDescription] = useState('')
   const [parentId, setParentId] = useState('')
   const [saving, setSaving] = useState(false)
+  const [sortSaving, setSortSaving] = useState(false)
   const [msg, setMsg] = useState('')
 
   const cats = tab === 'post' ? postCats : pageCats
@@ -55,7 +72,7 @@ export default function CategoriesClient({ initialPost, initialPage }: Props) {
         })
         if (!res.ok) { setMsg('创建失败'); return }
         const cat = await res.json() as Category
-        setCats(prev => [...prev, { ...cat, description: description || null, cover_image: null, created_at: Date.now() / 1000 }])
+        setCats(prev => [...prev, { ...cat, description: description || null, cover_image: null, created_at: Date.now() / 1000, sort_order: prev.length }])
       } else if (modal?.type === 'edit') {
         const res = await fetch(`/api/categories/${modal.item.id}`, {
           method: 'PUT',
@@ -77,6 +94,26 @@ export default function CategoriesClient({ initialPost, initialPage }: Props) {
     setDelId(null)
   }
 
+  async function moveItem(index: number, direction: 'up' | 'down') {
+    const newCats = [...cats]
+    const swapIndex = direction === 'up' ? index - 1 : index + 1
+    if (swapIndex < 0 || swapIndex >= newCats.length) return
+    ;[newCats[index], newCats[swapIndex]] = [newCats[swapIndex], newCats[index]]
+    const updated = newCats.map((c, i) => ({ ...c, sort_order: i }))
+    setCats(updated)
+
+    setSortSaving(true)
+    try {
+      await fetch('/api/categories/sort', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orders: updated.map(c => ({ id: c.id, sort_order: c.sort_order })) }),
+      })
+    } finally {
+      setSortSaving(false)
+    }
+  }
+
   const parentName = (id: string) => cats.find(c => c.id === id)?.name ?? ''
 
   return (
@@ -84,7 +121,10 @@ export default function CategoriesClient({ initialPost, initialPage }: Props) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
         <div>
           <h1 style={{ fontSize: '18px', fontWeight: 700, color: '#18181b', margin: 0 }}>分类管理</h1>
-          <p style={{ fontSize: '13px', color: '#71717a', margin: '4px 0 0' }}>{cats.length} 个分类</p>
+          <p style={{ fontSize: '13px', color: '#71717a', margin: '4px 0 0' }}>
+            {cats.length} 个分类
+            {sortSaving && <span style={{ marginLeft: '8px', color: '#a1a1aa' }}>保存排序…</span>}
+          </p>
         </div>
         <button onClick={openCreate} style={{
           display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px',
@@ -120,6 +160,34 @@ export default function CategoriesClient({ initialPost, initialPage }: Props) {
               padding: '12px 16px',
               borderBottom: i < cats.length - 1 ? '1px solid #f4f4f5' : 'none',
             }}>
+              {/* Sort controls */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flexShrink: 0 }}>
+                <button
+                  onClick={() => moveItem(i, 'up')}
+                  disabled={i === 0}
+                  title="上移"
+                  style={{
+                    padding: '3px 4px', border: '1px solid #e4e4e7', borderRadius: '4px',
+                    background: '#fff', cursor: i === 0 ? 'default' : 'pointer',
+                    color: i === 0 ? '#d4d4d8' : '#71717a', lineHeight: 0,
+                  }}
+                >
+                  <ChevronUpIcon />
+                </button>
+                <button
+                  onClick={() => moveItem(i, 'down')}
+                  disabled={i === cats.length - 1}
+                  title="下移"
+                  style={{
+                    padding: '3px 4px', border: '1px solid #e4e4e7', borderRadius: '4px',
+                    background: '#fff', cursor: i === cats.length - 1 ? 'default' : 'pointer',
+                    color: i === cats.length - 1 ? '#d4d4d8' : '#71717a', lineHeight: 0,
+                  }}
+                >
+                  <ChevronDownIcon />
+                </button>
+              </div>
+
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '13px', fontWeight: 500, color: '#18181b' }}>{cat.name}</span>
