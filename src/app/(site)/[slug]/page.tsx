@@ -1,10 +1,21 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
-import { getContentBySlug } from '@/lib/db'
+import { getContentBySlug, getFormBySlug } from '@/lib/db'
 import { getSiteSettings } from '@/lib/config'
 import DefaultPost from '@/themes/default/post'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import { marked, type Tokens } from 'marked'
+import { processFormEmbeds } from '@/lib/formEmbed'
 
+function buildMarked() {
+  const renderer = new marked.Renderer()
+  renderer.code = ({ text, lang }: Tokens.Code) => {
+    const langClass = lang ? `shj-lang-${lang}` : 'shj-lang-plain'
+    const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    return `<pre><code class="${langClass}">${escaped}</code></pre>`
+  }
+  return marked.use({ renderer })
+}
 
 interface Props { params: Promise<{ slug: string }> }
 
@@ -28,5 +39,11 @@ export default async function PagePage({ params }: Props) {
     getSiteSettings(env.DB),
   ])
   if (!page || page.status !== 'published') notFound()
-  return <DefaultPost post={page} settings={settings} />
+
+  buildMarked()
+  const rawHtml = page.content ? await marked.parse(page.content) : ''
+  const { html: htmlContent, slugs: formSlugs } = processFormEmbeds(rawHtml)
+  const embeddedForms = (await Promise.all(formSlugs.map(s => getFormBySlug(env.DB, s)))).filter(Boolean)
+
+  return <DefaultPost post={{ ...page, content: htmlContent }} settings={settings} embeddedForms={embeddedForms as NonNullable<typeof embeddedForms[0]>[]} />
 }

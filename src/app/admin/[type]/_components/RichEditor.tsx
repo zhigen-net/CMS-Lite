@@ -70,6 +70,10 @@ export default function RichEditor({ content, onChange }: Props) {
   const [imgUploading, setImgUploading] = useState(false)
   const imgInputRef = useRef<HTMLInputElement>(null)
 
+  const [formPickerOpen, setFormPickerOpen] = useState(false)
+  const [formList, setFormList] = useState<{ id: string; name: string; slug: string }[]>([])
+  const [formLoading, setFormLoading] = useState(false)
+
   // Auto-grow textarea
   useEffect(() => {
     const ta = taRef.current
@@ -89,6 +93,26 @@ export default function RichEditor({ content, onChange }: Props) {
         setImgMedia(d.items.filter(m => m.mime_type.startsWith('image/')))
       }
     } finally { setImgLoading(false) }
+  }
+
+  async function openFormPicker() {
+    setFormPickerOpen(true)
+    if (formList.length > 0) return
+    setFormLoading(true)
+    try {
+      const res = await fetch('/api/forms')
+      if (res.ok) setFormList(await res.json() as { id: string; name: string; slug: string }[])
+    } finally { setFormLoading(false) }
+  }
+
+  function insertFormShortcode(slug: string) {
+    const ta = taRef.current
+    if (!ta) return
+    const s = ta.selectionStart
+    const ins = `\n\n[form:${slug}]\n\n`
+    onChange(content.slice(0, s) + ins + content.slice(s))
+    setFormPickerOpen(false)
+    setTimeout(() => { ta.focus(); ta.setSelectionRange(s + ins.length, s + ins.length) }, 0)
   }
 
   function insertImageMd(url: string, filename = 'image') {
@@ -233,7 +257,47 @@ export default function RichEditor({ content, onChange }: Props) {
         >
           <ImageIcon size={14} strokeWidth={1.75} />
         </button>
+
+        <div style={{ width: '1px', height: '16px', background: '#e4e4e7', margin: '0 2px', alignSelf: 'center' }} />
+        <button
+          type="button"
+          title="插入表单"
+          onClick={openFormPicker}
+          style={{ ...btnStyle, display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', fontSize: '11px' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#f4f4f5' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+        >
+          📋 表单
+        </button>
       </div>
+
+      {/* Form picker modal */}
+      {formPickerOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={e => { if (e.target === e.currentTarget) setFormPickerOpen(false) }}>
+          <div style={{ background: '#fff', borderRadius: '12px', width: '420px', maxHeight: '70vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.2)', overflow: 'hidden' }}>
+            <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #e4e4e7', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#18181b' }}>选择要嵌入的表单</span>
+              <button onClick={() => setFormPickerOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', color: '#71717a' }}>×</button>
+            </div>
+            <div style={{ overflowY: 'auto', flex: 1, padding: '0.75rem' }}>
+              {formLoading && <p style={{ textAlign: 'center', color: '#71717a', padding: '2rem', fontSize: '0.875rem' }}>加载中…</p>}
+              {!formLoading && formList.length === 0 && (
+                <p style={{ textAlign: 'center', color: '#71717a', padding: '2rem', fontSize: '0.875rem' }}>暂无表单，请先在「表单」页面创建</p>
+              )}
+              {formList.map(form => (
+                <button key={form.id} onClick={() => insertFormShortcode(form.slug)}
+                  style={{ display: 'flex', flexDirection: 'column', width: '100%', textAlign: 'left', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #e4e4e7', background: '#fff', cursor: 'pointer', marginBottom: '0.5rem', transition: 'border-color 0.15s' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#2563eb' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#e4e4e7' }}>
+                  <span style={{ fontWeight: 600, fontSize: '0.875rem', color: '#18181b', marginBottom: '0.2rem' }}>{form.name}</span>
+                  <span style={{ fontSize: '0.75rem', color: '#71717a', fontFamily: 'monospace' }}>[form:{form.slug}]</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Markdown textarea */}
       <textarea

@@ -1,22 +1,37 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect } from 'react'
-import type { Content, SiteSettings } from '@/types'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
+import type { Content, SiteSettings, Form } from '@/types'
 import { formatDate, estimateReadingTime } from '@/lib/utils'
 import TableOfContents from './components/TableOfContents'
 import PostCard from './components/PostCard'
 import ReadingProgress from './components/ReadingProgress'
 import BackToTop from './components/BackToTop'
+import InlineForm from './components/InlineForm'
 
 interface Props {
   post: Content
   settings: SiteSettings
   related?: Content[]
+  embeddedForms?: Form[]
 }
 
-export default function DefaultPost({ post, settings, related = [] }: Props) {
+export default function DefaultPost({ post, settings, related = [], embeddedForms = [] }: Props) {
   void settings
+  const [formPortals, setFormPortals] = useState<Array<{ el: Element; form: Form }>>([])
+
+  useEffect(() => {
+    if (!embeddedForms.length) return
+    const targets: Array<{ el: Element; form: Form }> = []
+    document.querySelectorAll('[data-form]').forEach(el => {
+      const slug = el.getAttribute('data-form')
+      const form = embeddedForms.find(f => f.slug === slug)
+      if (form) targets.push({ el, form })
+    })
+    setFormPortals(targets)
+  }, [embeddedForms])
   const readTime = post.content ? estimateReadingTime(post.content) : 0
   const date = post.published_at ? formatDate(post.published_at) : null
 
@@ -192,6 +207,7 @@ export default function DefaultPost({ post, settings, related = [] }: Props) {
         </div>
       </main>
       <BackToTop />
+      {formPortals.map(({ el, form }) => createPortal(<InlineForm key={form.id} form={form} />, el))}
     </>
   )
 }

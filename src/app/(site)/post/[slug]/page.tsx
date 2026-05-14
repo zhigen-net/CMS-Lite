@@ -1,10 +1,11 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
-import { getContentBySlugWithMeta, getRelatedPosts } from '@/lib/db'
+import { getContentBySlugWithMeta, getRelatedPosts, getFormBySlug } from '@/lib/db'
 import { getSiteSettings } from '@/lib/config'
 import DefaultPost from '@/themes/default/post'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { marked, type Tokens } from 'marked'
+import { processFormEmbeds } from '@/lib/formEmbed'
 
 function buildMarked() {
   const renderer = new marked.Renderer()
@@ -40,8 +41,13 @@ export default async function PostPage({ params }: Props) {
   if (!post || post.status !== 'published') notFound()
 
   buildMarked()
-  const htmlContent = post.content ? await marked.parse(post.content) : ''
-  const related = await getRelatedPosts(env.DB, post.id, 3)
+  const rawHtml = post.content ? await marked.parse(post.content) : ''
+  const { html: htmlContent, slugs: formSlugs } = processFormEmbeds(rawHtml)
+
+  const [related, ...embeddedForms] = await Promise.all([
+    getRelatedPosts(env.DB, post.id, 3),
+    ...formSlugs.map(s => getFormBySlug(env.DB, s)),
+  ])
 
   const base = (settings['site.url'] as string | undefined)?.replace(/\/$/, '') || ''
   const jsonLd = {
@@ -62,7 +68,7 @@ export default async function PostPage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <DefaultPost post={{ ...post, content: htmlContent }} settings={settings} related={related} />
+      <DefaultPost post={{ ...post, content: htmlContent }} settings={settings} related={related} embeddedForms={embeddedForms.filter(Boolean) as NonNullable<typeof embeddedForms[0]>[]} />
     </>
   )
 }
