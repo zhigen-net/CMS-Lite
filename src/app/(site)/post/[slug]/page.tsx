@@ -4,6 +4,7 @@ import { getSiteSettings } from '@/lib/config'
 import DefaultPost from '@/themes/default/post'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import type { Form } from '@/types'
 import { marked, type Tokens } from 'marked'
 import { preprocessFormShortcodes, processFormEmbeds } from '@/lib/formEmbed'
 
@@ -46,10 +47,12 @@ export default async function PostPage({ params }: Props) {
   const { html: htmlContent, slugs: postSlugs } = processFormEmbeds(rawHtml)
   const formSlugs = [...new Set([...preSlugs, ...postSlugs])]
 
-  const [related, ...embeddedForms] = await Promise.all([
+  // Fetch independently to avoid mixed-type destructuring
+  const [related, formResults] = await Promise.all([
     getRelatedPosts(env.DB, post.id, 3),
-    ...formSlugs.map(s => getFormBySlug(env.DB, s)),
+    Promise.all(formSlugs.map(s => getFormBySlug(env.DB, s))),
   ])
+  const embeddedForms = formResults.filter((f): f is Form => f !== null)
 
   const base = (settings['site.url'] as string | undefined)?.replace(/\/$/, '') || ''
   const jsonLd = {
@@ -70,7 +73,7 @@ export default async function PostPage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <DefaultPost post={{ ...post, content: htmlContent }} settings={settings} related={related} embeddedForms={embeddedForms.filter(Boolean) as NonNullable<typeof embeddedForms[0]>[]} />
+      <DefaultPost post={{ ...post, content: htmlContent }} settings={settings} related={related} embeddedForms={embeddedForms} />
     </>
   )
 }

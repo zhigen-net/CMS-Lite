@@ -1,8 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { useEffect } from 'react'
 import type { Content, SiteSettings, Form } from '@/types'
 import { formatDate, estimateReadingTime } from '@/lib/utils'
 import TableOfContents from './components/TableOfContents'
@@ -18,20 +17,29 @@ interface Props {
   embeddedForms?: Form[]
 }
 
+// Split HTML at form-embed placeholders and render interleaved with InlineForm components
+function ProseWithForms({ html, forms, style }: { html: string; forms: Form[]; style?: React.CSSProperties }) {
+  const formMap = Object.fromEntries(forms.map(f => [f.slug, f]))
+  const parts = html.split(/<div[^>]*data-form="([^"]+)"[^>]*><\/div>/g)
+  // parts: [htmlSegment, slug, htmlSegment, slug, ...]
+  if (parts.length === 1) {
+    return <div className="prose" style={style} dangerouslySetInnerHTML={{ __html: html }} />
+  }
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (i % 2 === 0) {
+          return part.trim() ? <div key={i} className="prose" style={style} dangerouslySetInnerHTML={{ __html: part }} /> : null
+        }
+        const form = formMap[part]
+        return form ? <InlineForm key={i} form={form} /> : null
+      })}
+    </>
+  )
+}
+
 export default function DefaultPost({ post, settings, related = [], embeddedForms = [] }: Props) {
   void settings
-  const [formPortals, setFormPortals] = useState<Array<{ el: Element; form: Form }>>([])
-
-  useEffect(() => {
-    if (!embeddedForms.length) return
-    const targets: Array<{ el: Element; form: Form }> = []
-    document.querySelectorAll('[data-form]').forEach(el => {
-      const slug = el.getAttribute('data-form')
-      const form = embeddedForms.find(f => f.slug === slug)
-      if (form) targets.push({ el, form })
-    })
-    setFormPortals(targets)
-  }, [embeddedForms])
   const readTime = post.content ? estimateReadingTime(post.content) : 0
   const date = post.published_at ? formatDate(post.published_at) : null
 
@@ -151,8 +159,10 @@ export default function DefaultPost({ post, settings, related = [], embeddedForm
             </header>
 
             {/* Article body */}
-            <div className="prose" style={{ lineHeight: 1.85, fontSize: '1.0625rem', color: 'var(--color-text)' }}
-              dangerouslySetInnerHTML={{ __html: post.content ?? '' }}
+            <ProseWithForms
+              html={post.content ?? ''}
+              forms={embeddedForms}
+              style={{ lineHeight: 1.85, fontSize: '1.0625rem', color: 'var(--color-text)' }}
             />
 
             {/* Author card */}
@@ -207,7 +217,6 @@ export default function DefaultPost({ post, settings, related = [], embeddedForm
         </div>
       </main>
       <BackToTop />
-      {formPortals.map(({ el, form }) => createPortal(<InlineForm key={form.id} form={form} />, el))}
     </>
   )
 }
