@@ -8,36 +8,55 @@ import {
   HomeIcon, FileTextIcon, FilesIcon, ImageIcon, BotIcon,
   PaletteIcon, PuzzleIcon, SettingsIcon, ExternalLinkIcon,
   MenuIcon, XIcon, UsersIcon, UserIcon, KeyIcon, LogOutIcon,
-  FolderIcon, TagIcon, LayersIcon, ClipboardIcon,
+  FolderIcon, TagIcon, ClipboardIcon,
 } from '@/components/icons'
 
-const NAV = [
+type NavItem = { href: string; label: string; icon: React.FC<{ size?: number }>; exact?: boolean }
+type NavGroup = { group: string; items: NavItem[] }
+type NavEntry = NavItem | NavGroup
+
+const NAV: NavEntry[] = [
   { href: '/admin', label: '概览', icon: HomeIcon, exact: true },
-  { href: '/admin/post', label: '文章', icon: FileTextIcon },
-  { href: '/admin/page', label: '页面', icon: FilesIcon },
-  { href: '/admin/content-types', label: '内容类型', icon: LayersIcon },
-  { href: '/admin/categories', label: '分类', icon: FolderIcon },
-  { href: '/admin/tags', label: '标签', icon: TagIcon },
-  { href: '/admin/media', label: '媒体', icon: ImageIcon },
-  { href: '/admin/forms', label: '表单', icon: ClipboardIcon },
   { href: '/admin/ai', label: 'AI 运营', icon: BotIcon },
-  { href: '/admin/appearance', label: '外观', icon: PaletteIcon },
-  { href: '/admin/plugins', label: '插件', icon: PuzzleIcon },
-  { href: '/admin/users', label: '用户', icon: UsersIcon },
-  { href: '/admin/settings', label: '设置', icon: SettingsIcon },
+  {
+    group: '内容',
+    items: [
+      { href: '/admin/post', label: '文章', icon: FileTextIcon },
+      { href: '/admin/page', label: '页面', icon: FilesIcon },
+    ],
+  },
+  {
+    group: '管理',
+    items: [
+      { href: '/admin/categories', label: '分类', icon: FolderIcon },
+      { href: '/admin/tags', label: '标签', icon: TagIcon },
+      { href: '/admin/media', label: '媒体', icon: ImageIcon },
+      { href: '/admin/forms', label: '表单', icon: ClipboardIcon },
+    ],
+  },
+  {
+    group: '系统',
+    items: [
+      { href: '/admin/users', label: '用户', icon: UsersIcon },
+      { href: '/admin/appearance', label: '外观', icon: PaletteIcon },
+      { href: '/admin/plugins', label: '插件', icon: PuzzleIcon },
+      { href: '/admin/settings', label: '设置', icon: SettingsIcon },
+    ],
+  },
 ]
 
 const s = {
   sidebar: {
-    width: 200,
+    width: 210,
     bg: '#fff',
-    border: '#e8e8e8',
-    text: '#52525b',
-    textActive: '#18181b',
-    bgActive: '#f4f4f5',
-    brand: '#18181b',
+    border: '#ebebeb',
+    text: '#6b7280',
+    textActive: '#111827',
+    bgActive: '#f3f4f6',
+    bgHover: '#f9fafb',
+    brand: '#111827',
   },
-  main: { bg: '#f9fafb' },
+  main: { bg: '#f5f5f5' },
 }
 
 interface Me { id: string; name: string; email: string; role: string }
@@ -235,26 +254,26 @@ function UserMenu() {
   return (
     <>
       <button ref={btnRef} onClick={toggleOpen} style={{
-        width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
-        padding: '8px 10px', borderRadius: '8px', border: 'none',
-        background: open ? '#f4f4f5' : 'transparent',
+        width: '100%', display: 'flex', alignItems: 'center', gap: '9px',
+        padding: '7px 8px', borderRadius: '8px', border: 'none',
+        background: open ? '#f3f4f6' : 'transparent',
         cursor: 'pointer', textAlign: 'left',
-        transition: 'background 0.1s',
+        transition: 'background 0.12s',
       }}
-        onMouseEnter={e => { if (!open) (e.currentTarget as HTMLElement).style.background = '#f9f9f9' }}
-        onMouseLeave={e => { if (!open) (e.currentTarget as HTMLElement).style.background = open ? '#f4f4f5' : 'transparent' }}
+        onMouseEnter={e => { if (!open) (e.currentTarget as HTMLElement).style.background = '#f9fafb' }}
+        onMouseLeave={e => { if (!open) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
       >
         <div style={{
-          width: '26px', height: '26px', borderRadius: '50%',
+          width: '28px', height: '28px', borderRadius: '8px',
           background: '#18181b', color: '#fff',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '11px', fontWeight: 700, flexShrink: 0,
+          fontSize: '12px', fontWeight: 700, flexShrink: 0,
         }}>{initials}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '12px', fontWeight: 600, color: '#18181b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ fontSize: '13px', fontWeight: 500, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {me.name || me.email}
           </div>
-          <div style={{ fontSize: '10px', color: '#a1a1aa' }}>
+          <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '1px' }}>
             {me.role === 'admin' ? '管理员' : me.role === 'editor' ? '编辑' : '作者'}
           </div>
         </div>
@@ -268,6 +287,22 @@ function UserMenu() {
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+
+  // Collapsed state per group; default: expand group containing current page
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
+    const result: Record<string, boolean> = {}
+    for (const entry of NAV) {
+      if ('group' in entry) {
+        const hasActive = entry.items.some(item => pathname === item.href || pathname.startsWith(item.href + '/'))
+        result[entry.group] = !hasActive
+      }
+    }
+    return result
+  })
+
+  function toggleGroup(group: string) {
+    setCollapsed(prev => ({ ...prev, [group]: !prev[group] }))
+  }
 
   useEffect(() => { setOpen(false) }, [pathname])
 
@@ -284,9 +319,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           .adm-topbar { display: none !important; }
         }
         @media (max-width: 959px) {
-          .adm-sidebar { position: fixed !important; z-index: 50; height: 100vh !important; box-shadow: 4px 0 24px rgba(0,0,0,0.08); }
+          .adm-sidebar { position: fixed !important; z-index: 50; height: 100vh !important; box-shadow: 4px 0 32px rgba(0,0,0,0.3); }
         }
-        .adm-nav-item:hover { background: ${s.sidebar.bgActive} !important; color: ${s.sidebar.textActive} !important; }
+        .adm-nav-item:hover { background: ${s.sidebar.bgHover} !important; color: ${s.sidebar.textActive} !important; }
+        .adm-group-btn:hover { background: ${s.sidebar.bgHover} !important; color: #374151 !important; }
       `}</style>
 
       {/* Overlay */}
@@ -303,32 +339,84 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         display: 'flex', flexDirection: 'column',
         top: 0,
         transform: open ? 'translateX(0)' : 'translateX(-100%)',
-        transition: 'transform 0.2s ease',
+        transition: 'transform 0.22s ease',
       }}>
         {/* Brand */}
-        <div style={{ padding: '20px 16px 12px', borderBottom: `1px solid ${s.sidebar.border}` }}>
-          <Link href="/admin" style={{ textDecoration: 'none' }}>
-            <span style={{ fontSize: '14px', fontWeight: 700, color: s.sidebar.brand, letterSpacing: '-0.01em' }}>
+        <div style={{ padding: '16px 14px 12px', borderBottom: `1px solid ${s.sidebar.border}` }}>
+          <Link href="/admin" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ width: '26px', height: '26px', borderRadius: '7px', background: '#18181b', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', flexShrink: 0 }}>
+              <BotIcon size={14} />
+            </div>
+            <span style={{ fontSize: '14px', fontWeight: 700, color: s.sidebar.brand, letterSpacing: '-0.02em' }}>
               AI CMS
             </span>
           </Link>
         </div>
 
         {/* Nav */}
-        <nav style={{ flex: 1, padding: '8px', overflowY: 'auto' }}>
-          {NAV.map(({ href, label, icon: Icon, exact }) => {
+        <nav style={{ flex: 1, padding: '4px 8px 8px', overflowY: 'auto' }}>
+          {NAV.map((entry, idx) => {
+            if ('group' in entry) {
+              const isCollapsed = collapsed[entry.group] ?? false
+              const hasActive = entry.items.some(item => pathname === item.href || pathname.startsWith(item.href + '/'))
+              return (
+                <div key={entry.group} style={{ marginTop: idx === 0 ? 0 : '2px' }}>
+                  <button
+                    className="adm-group-btn"
+                    onClick={() => toggleGroup(entry.group)}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      width: '100%', padding: '6px 8px', border: 'none', borderRadius: '7px',
+                      background: 'transparent', cursor: 'pointer',
+                      color: hasActive ? '#374151' : '#9ca3af',
+                      transition: 'background 0.12s, color 0.12s',
+                    }}
+                  >
+                    <span style={{ fontSize: '11.5px', fontWeight: 500, letterSpacing: '0.01em' }}>
+                      {entry.group}
+                    </span>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                      style={{ transition: 'transform 0.2s ease', transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', flexShrink: 0, opacity: 0.6 }}>
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </button>
+                  <div style={{
+                    overflow: 'hidden',
+                    maxHeight: isCollapsed ? 0 : `${entry.items.length * 34}px`,
+                    transition: 'max-height 0.22s ease',
+                  }}>
+                    {entry.items.map(({ href, label, icon: Icon }) => {
+                      const active = pathname === href || pathname.startsWith(href + '/')
+                      return (
+                        <Link key={href} href={href} className={active ? '' : 'adm-nav-item'} style={{
+                          display: 'flex', alignItems: 'center', gap: '8px',
+                          padding: '6px 8px', borderRadius: '7px', marginBottom: '1px',
+                          textDecoration: 'none', fontSize: '13.5px', fontWeight: active ? 500 : 400,
+                          color: active ? s.sidebar.textActive : s.sidebar.text,
+                          background: active ? s.sidebar.bgActive : 'transparent',
+                          transition: 'background 0.12s, color 0.12s',
+                        }}>
+                          <span style={{ lineHeight: 0, color: active ? '#374151' : '#9ca3af' }}><Icon size={15} /></span>
+                          {label}
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            }
+            const { href, label, icon: Icon, exact } = entry
             const active = exact ? pathname === href : pathname === href || pathname.startsWith(href + '/')
             return (
               <Link key={href} href={href} className={active ? '' : 'adm-nav-item'} style={{
                 display: 'flex', alignItems: 'center', gap: '8px',
-                padding: '6px 8px', borderRadius: '6px', marginBottom: '1px',
-                textDecoration: 'none', fontSize: '13.5px',
-                fontWeight: active ? 500 : 400,
+                padding: '6px 8px', borderRadius: '7px', marginBottom: '1px',
+                textDecoration: 'none', fontSize: '13.5px', fontWeight: active ? 500 : 400,
                 color: active ? s.sidebar.textActive : s.sidebar.text,
                 background: active ? s.sidebar.bgActive : 'transparent',
-                transition: 'background 0.1s, color 0.1s',
+                transition: 'background 0.12s, color 0.12s',
               }}>
-                <span style={{ opacity: active ? 1 : 0.6, lineHeight: 0 }}><Icon size={15} /></span>
+                <span style={{ lineHeight: 0, color: active ? '#374151' : '#9ca3af' }}><Icon size={15} /></span>
                 {label}
               </Link>
             )
@@ -336,21 +424,19 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         </nav>
 
         {/* Footer */}
-        <div style={{ padding: '8px 8px 10px', borderTop: `1px solid ${s.sidebar.border}` }}>
-          <div style={{ marginBottom: '6px', padding: '0 2px' }}>
-            <Link href="/" target="_blank" style={{
-              display: 'flex', alignItems: 'center', gap: '6px',
-              fontSize: '12px', color: '#a1a1aa', textDecoration: 'none',
-              padding: '5px 8px', borderRadius: '6px',
-              transition: 'color 0.1s',
-            }}
-              onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = '#52525b')}
-              onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = '#a1a1aa')}
-            >
-              <ExternalLinkIcon size={12} />
-              查看网站
-            </Link>
-          </div>
+        <div style={{ padding: '8px', borderTop: `1px solid ${s.sidebar.border}` }}>
+          <Link href="/" target="_blank" style={{
+            display: 'flex', alignItems: 'center', gap: '7px',
+            fontSize: '12px', color: '#9ca3af', textDecoration: 'none',
+            padding: '6px 8px', borderRadius: '7px', marginBottom: '4px',
+            transition: 'color 0.12s, background 0.12s',
+          }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#374151'; (e.currentTarget as HTMLElement).style.background = '#f9fafb' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#9ca3af'; (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+          >
+            <ExternalLinkIcon size={13} />
+            查看网站
+          </Link>
           <UserMenu />
         </div>
       </aside>
