@@ -2,7 +2,7 @@
 
 > AI 时代的内容管理系统，基于 Cloudflare 全家桶，完全免费部署。
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/your-username/ai-cms)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/zhigen-net/CMS-Lite)
 
 ## 特性
 

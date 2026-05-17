@@ -150,7 +150,7 @@ async function runPlan(
             source: shared.imageSource as 'ai' | 'unsplash',
             query: imgQuery,
             unsplashKey: shared.unsplashKey,
-            genericFallback: shared.siteTopics || 'healthcare',
+            genericFallback: shared.siteTopics || 'general',
           })
           coverImage = result.url
           coverGenerated = true

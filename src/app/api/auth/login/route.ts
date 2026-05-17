@@ -1,5 +1,5 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
-import { getUserByEmail, createUser } from '@/lib/db'
+import { getUserByEmail, createUser, setSetting } from '@/lib/db'
 import { signToken, verifyPassword, hashPassword } from '@/lib/auth'
 import { generateId } from '@/lib/utils'
 import { isSetupCompleted } from '@/lib/config'
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   const { email, password } = parsed.data
   const db = env.DB
 
-  // 首次安装：自动创建管理员账号
+  // 首次安装：自动创建管理员账号并标记安装完成
   const setupDone = await isSetupCompleted(db)
   if (!setupDone) {
     const existingAdmin = await getUserByEmail(db, email)
@@ -34,6 +34,7 @@ export async function POST(request: Request) {
         role: 'admin',
         password_hash: await hashPassword(password),
       })
+      await setSetting(db, 'setup.completed', true)
     }
   }
 
