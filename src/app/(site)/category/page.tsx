@@ -2,10 +2,20 @@ export const dynamic = 'force-dynamic'
 
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getCategories, getTagsWithCount } from '@/lib/db'
+import { getSiteSettings } from '@/lib/config'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
-export const metadata: Metadata = { title: '全部分类' }
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    const { env } = getCloudflareContext()
+    const s = await getSiteSettings(env.DB)
+    return {
+      title: s['seo.categoryList.title'] || '全部分类',
+      description: s['seo.categoryList.description'] || '',
+    }
+  } catch { return { title: '全部分类' } }
+}
 
 export default async function CategoriesIndexPage() {
   const { env } = getCloudflareContext()

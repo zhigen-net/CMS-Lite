@@ -5,6 +5,7 @@ import type { SiteSettings, NavItem } from '@/types'
 import type { ThemeMeta } from '@/themes'
 import MenusClient from '../menus/_components/MenusClient'
 import ThemeManager from './ThemeManager'
+import { TabBar } from '@/components/TabBar'
 
 type PrimaryTab = 'menus' | 'theme'
 
@@ -34,25 +35,14 @@ export default function AppearanceHub({
       <div style={{
         display: 'flex', alignItems: 'center',
         borderBottom: '1px solid #e4e4e7',
-        background: '#fff', padding: '0 24px',
+        background: '#fff', padding: '12px 24px',
         flexShrink: 0,
       }}>
-        {([['theme', '主题切换'], ['menus', '导航菜单']] as const).map(([id, label]) => (
-          <button
-            key={id}
-            onClick={() => setPrimary(id)}
-            style={{
-              padding: '14px 16px', fontSize: '13px',
-              fontWeight: primary === id ? 600 : 400,
-              color: primary === id ? '#18181b' : '#71717a',
-              border: 'none', background: 'none', cursor: 'pointer',
-              borderBottom: primary === id ? '2px solid #18181b' : '2px solid transparent',
-              marginBottom: '-1px', transition: 'color 0.1s',
-            }}
-          >
-            {label}
-          </button>
-        ))}
+        <TabBar
+          tabs={[{ key: 'theme', label: '主题切换' }, { key: 'menus', label: '导航菜单' }]}
+          active={primary}
+          onChange={id => setPrimary(id as PrimaryTab)}
+        />
       </div>
 
       {/* Content */}

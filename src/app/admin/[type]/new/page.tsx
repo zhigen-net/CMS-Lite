@@ -1,8 +1,9 @@
+export const dynamic = 'force-dynamic'
+
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getContentType } from '@/lib/db'
 import { notFound } from 'next/navigation'
 import ContentEditor from '../_components/ContentEditor'
-
 
 interface Props { params: Promise<{ type: string }> }
 

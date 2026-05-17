@@ -1,10 +1,10 @@
 'use client'
 
 import Link from 'next/link'
+import { useState, useEffect, useCallback } from 'react'
 import type { Content, SiteSettings, Category, Tag } from '@/types'
 import PostCard from './components/PostCard'
 import PaginationNav from '@/components/PaginationNav'
-import { SearchIcon } from '@/components/icons'
 import { formatDate } from '@/lib/utils'
 
 interface Pagination { page: number; totalPages: number; total: number; pageSize: number }
@@ -16,6 +16,80 @@ interface Props {
   categoryMap?: Record<string, Category>
   pagination?: Pagination
   tags?: (Tag & { count: number })[]
+}
+
+function extractBodyImages(html: string): string[] {
+  const matches = [...html.matchAll(/<img[^>]+src="([^"]+)"/g)]
+  return matches.map(m => m[1]).filter(Boolean)
+}
+
+function HeroCarousel({ post }: { post: Content }) {
+  const href = `/post/${post.slug}`
+  const images: string[] = []
+  if (post.cover_image) images.push(post.cover_image)
+  if (post.content) images.push(...extractBodyImages(post.content))
+  const slides = images.slice(0, 5)
+
+  const [idx, setIdx] = useState(0)
+  const [fade, setFade] = useState(true)
+
+  const goTo = useCallback((next: number) => {
+    setFade(false)
+    setTimeout(() => { setIdx(next); setFade(true) }, 300)
+  }, [])
+
+  useEffect(() => {
+    if (slides.length <= 1) return
+    const t = setInterval(() => goTo((idx + 1) % slides.length), 5000)
+    return () => clearInterval(t)
+  }, [idx, slides.length, goTo])
+
+  return (
+    <>
+      {/* Slides */}
+      {slides.length > 0
+        ? <img
+            key={slides[idx]}
+            src={slides[idx]}
+            alt=""
+            className="home-hero-img"
+            style={{ opacity: fade ? 1 : 0, transition: 'opacity 0.4s ease' }}
+          />
+        : <div className="home-hero-fallback" />
+      }
+      <div className="home-hero-overlay" />
+
+      <div className="home-hero-inner">
+        {post.categories?.[0] && (
+          <Link href={`/category/${post.categories[0].slug}`} className="hero-cat-badge">
+            {post.categories[0].name}
+          </Link>
+        )}
+        <Link href={href} className="hero-title-link">
+          <h1>{post.title}</h1>
+        </Link>
+        {post.excerpt && <p className="home-hero-desc">{post.excerpt}</p>}
+        <div className="hero-meta">
+          {post.author && <span className="hero-meta-item">{post.author.name}</span>}
+          {post.published_at && (
+            <>
+              {post.author && <span className="hero-meta-dot">·</span>}
+              <span className="hero-meta-item">{formatDate(post.published_at)}</span>
+            </>
+          )}
+        </div>
+
+        {/* Dot indicators */}
+        {slides.length > 1 && (
+          <div className="hero-dots">
+            {slides.map((_, i) => (
+              <button key={i} onClick={() => goTo(i)} className={`hero-dot${i === idx ? ' active' : ''}`} aria-label={`图片 ${i + 1}`} />
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  )
 }
 
 export default function DefaultHome({ posts, settings, categories = [], categoryMap = {}, pagination, tags = [] }: Props) {
@@ -31,15 +105,29 @@ export default function DefaultHome({ posts, settings, categories = [], category
     <main>
       <style>{`
         /* Hero */
-        .home-hero { position:relative; overflow:hidden; border-bottom:1px solid var(--color-border); background:var(--color-bg); }
-        .home-hero-bg { position:absolute; inset:0; background:radial-gradient(ellipse 80% 60% at 50% -10%, color-mix(in srgb, var(--color-primary) 12%, transparent), transparent); pointer-events:none; }
-        .home-hero-inner { position:relative; max-width:var(--max-width); margin:0 auto; padding:clamp(3.5rem,9vw,6rem) 1.5rem clamp(2.5rem,6vw,4rem); }
-        .home-hero h1 { font-family:var(--font-heading); font-size:clamp(2.25rem,7vw,4rem); font-weight:900; letter-spacing:-0.045em; line-height:1.1; color:var(--color-text); margin-bottom:1rem; }
-        .home-hero-desc { font-size:clamp(1rem,2.5vw,1.15rem); color:var(--color-text-secondary); line-height:1.75; max-width:520px; margin-bottom:2rem; }
-        .home-hero-stats { display:flex; flex-wrap:wrap; gap:1.5rem; }
-        .hero-stat { display:flex; flex-direction:column; gap:1px; }
-        .hero-stat-num { font-size:1.5rem; font-weight:800; font-family:var(--font-heading); color:var(--color-text); letter-spacing:-0.04em; line-height:1; }
-        .hero-stat-label { font-size:0.75rem; color:var(--color-text-muted); font-weight:500; }
+        .home-hero { position:relative; overflow:hidden; }
+        .home-hero-img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center; }
+        .home-hero-overlay { position:absolute; inset:0; background:linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.55) 55%, rgba(0,0,0,0.82) 100%); }
+        .home-hero-fallback { position:absolute; inset:0; background:linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); }
+        .home-hero-inner { position:relative; z-index:2; min-height:clamp(480px,68vh,720px); max-width:var(--max-width); margin:0 auto; padding:clamp(3rem,8vw,5rem) 1.5rem clamp(2.5rem,6vw,4rem); display:flex; flex-direction:column; justify-content:flex-end; }
+        .hero-cat-badge { display:inline-flex; align-items:center; padding:0.3rem 0.85rem; border-radius:99px; background:var(--color-primary); color:#fff; font-size:0.7rem; font-weight:700; letter-spacing:0.04em; text-decoration:none; margin-bottom:1rem; width:fit-content; }
+        .home-hero h1 { font-family:var(--font-heading); font-size:clamp(1.9rem,5.5vw,3.5rem); font-weight:900; letter-spacing:-0.035em; line-height:1.12; color:#fff; margin-bottom:1rem; max-width:760px; text-shadow:0 2px 12px rgba(0,0,0,0.3); }
+        .home-hero-desc { font-size:clamp(0.95rem,2vw,1.1rem); color:rgba(255,255,255,0.75); line-height:1.7; max-width:560px; margin-bottom:1.75rem; }
+        .hero-meta { display:flex; flex-wrap:wrap; align-items:center; gap:0.75rem; margin-bottom:2rem; }
+        .hero-meta-item { font-size:0.82rem; color:rgba(255,255,255,0.6); }
+        .hero-meta-dot { color:rgba(255,255,255,0.3); }
+        .hero-title-link { text-decoration:none; }
+        .hero-title-link:hover h1 { opacity:0.85; }
+        .hero-dots { display:flex; gap:6px; margin-top:1.25rem; }
+        .hero-dot { width:6px; height:6px; border-radius:99px; border:none; background:rgba(255,255,255,0.35); cursor:pointer; padding:0; transition:background 0.2s, width 0.2s; }
+        .hero-dot.active { background:#fff; width:20px; }
+        /* Fallback hero (no image) */
+        .home-hero-text-fallback h1 { color:#fff; }
+        .home-hero-text-fallback .home-hero-desc { color:rgba(255,255,255,0.65); }
+        .home-hero-stats { display:flex; flex-wrap:wrap; gap:2rem; margin-top:2rem; }
+        .hero-stat { display:flex; flex-direction:column; gap:2px; }
+        .hero-stat-num { font-size:1.75rem; font-weight:800; font-family:var(--font-heading); color:#fff; letter-spacing:-0.04em; line-height:1; }
+        .hero-stat-label { font-size:0.72rem; color:rgba(255,255,255,0.5); font-weight:500; letter-spacing:0.04em; text-transform:uppercase; }
         /* Cat tabs */
         .cat-bar { border-bottom:1px solid var(--color-border); background:var(--color-bg); position:sticky; top:64px; z-index:10; }
         .cat-bar-inner { max-width:var(--max-width); margin:0 auto; padding:0 1.5rem; overflow-x:auto; display:flex; align-items:center; }
@@ -71,31 +159,23 @@ export default function DefaultHome({ posts, settings, categories = [], category
 
       {/* ── Hero ── */}
       <section className="home-hero">
-        <div className="home-hero-bg" />
-        <div className="home-hero-inner">
-          <h1>{siteName}</h1>
-          {siteDesc && <p className="home-hero-desc">{siteDesc}</p>}
-          <div className="home-hero-stats">
-            {totalArticles > 0 && (
-              <div className="hero-stat">
-                <span className="hero-stat-num">{totalArticles}</span>
-                <span className="hero-stat-label">篇文章</span>
+        {featured
+          ? <HeroCarousel post={featured} />
+          : (
+            <>
+              <div className="home-hero-fallback" />
+              <div className="home-hero-overlay" />
+              <div className="home-hero-inner home-hero-text-fallback">
+                <h1>{siteName}</h1>
+                {siteDesc && <p className="home-hero-desc">{siteDesc}</p>}
+                <div className="home-hero-stats">
+                  {totalArticles > 0 && <div className="hero-stat"><span className="hero-stat-num">{totalArticles}</span><span className="hero-stat-label">篇文章</span></div>}
+                  {categories.length > 0 && <div className="hero-stat"><span className="hero-stat-num">{categories.length}</span><span className="hero-stat-label">个分类</span></div>}
+                </div>
               </div>
-            )}
-            {categories.length > 0 && (
-              <div className="hero-stat">
-                <span className="hero-stat-num">{categories.length}</span>
-                <span className="hero-stat-label">个分类</span>
-              </div>
-            )}
-            {tags.length > 0 && (
-              <div className="hero-stat">
-                <span className="hero-stat-num">{tags.length}+</span>
-                <span className="hero-stat-label">个标签</span>
-              </div>
-            )}
-          </div>
-        </div>
+            </>
+          )
+        }
       </section>
 
       {/* ── Category tabs ── */}
@@ -122,13 +202,6 @@ export default function DefaultHome({ posts, settings, categories = [], category
           </div>
         ) : (
           <>
-            {/* ── Featured post ── */}
-            {featured && (
-              <section style={{ marginBottom: 'clamp(2.5rem,5vw,4rem)' }}>
-                <PostCard post={featured} featured category={categoryMap[featured.categories?.[0]?.id ?? '']} />
-              </section>
-            )}
-
             {/* ── Secondary posts (2 cols) ── */}
             {secondary.length > 0 && (
               <section style={{ marginBottom: 'clamp(2.5rem,5vw,4rem)' }}>

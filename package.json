@@ -7,11 +7,11 @@
     "build": "next build",
     "build:cf": "opennextjs-cloudflare build",
     "build:pages": "npm run build:cf && node scripts/prepare-pages.mjs",
-    "deploy": "npm run build:pages && wrangler pages deploy dist --project-name ai-cms --branch main",
+    "deploy": "npm run build:pages && wrangler pages deploy dist --config wrangler.local.toml --project-name ai-cms --branch main",
     "preview": "opennextjs-cloudflare preview",
     "migrate:local": "wrangler d1 execute cms-db --local --file",
-    "migrate:remote": "wrangler d1 execute cms-db --file",
-    "migrate": "node scripts/migrate.js",
+    "migrate:remote": "wrangler d1 execute cms-db --config wrangler.local.toml --file",
+    "migrate": "node scripts/migrate.js --config wrangler.local.toml",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv env.d.ts"
   },
   "dependencies": {

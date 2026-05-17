@@ -1,6 +1,5 @@
 export type ContentStatus = 'draft' | 'published' | 'scheduled'
 export type UserRole = 'admin' | 'editor' | 'author'
-export type AIAutonomyLevel = 'conservative' | 'standard' | 'autonomous'
 export type AITaskType = 'content' | 'seo' | 'design' | 'analytics' | 'setup'
 export type AITaskStatus = 'pending' | 'running' | 'done' | 'failed'
 
@@ -171,7 +170,6 @@ export interface SiteSettings {
   'site.url': string
   'site.logo': string | null
   'site.favicon': string | null
-  'site.language': string
   'theme.active': string
   'theme.variables': Record<string, string>
   'theme.customCss': string
@@ -181,10 +179,14 @@ export interface SiteSettings {
   'nav.main': NavItem[]
   'nav.footer': NavItem[]
   'seo.titleTemplate': string
-  'seo.defaultDesc': string
   'seo.robots': string
-  'ai.autonomyLevel': AIAutonomyLevel
-  'ai.contentFrequency': string
+  'seo.defaultOgImage': string
+  'seo.googleVerification': string
+  'seo.home.title': string
+  'seo.home.description': string
+  'seo.home.ogImage': string
+  'seo.categoryList.title': string
+  'seo.categoryList.description': string
   'ai.writingStyle': string
   // 内容 Agent
   'ai.content.count': number
@@ -210,6 +212,7 @@ export interface SiteSettings {
   // SEO Agent
   'ai.seo.batchSize': number
   'ai.seo.priorityAI': boolean
+  'ai.trigger.token': string
   'setup.completed': boolean
 }
 
@@ -231,4 +234,14 @@ export interface Pagination {
 export interface ListResult<T> {
   items: T[]
   pagination: Pagination
+}
+
+export interface ApiKey {
+  id: string
+  user_id: string
+  name: string
+  key_prefix: string
+  permissions: string[]
+  created_at: number
+  last_used_at: number | null
 }

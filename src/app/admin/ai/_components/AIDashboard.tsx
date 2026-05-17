@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import type { AITask, AITaskType, Category, CategoryPlan, SiteSettings } from '@/types'
 import { formatDate } from '@/lib/utils'
+import { TabBar } from '@/components/TabBar'
 
 // ── 常量 ────────────────────────────────────────────────────────────────
 
@@ -162,6 +163,11 @@ export default function AIDashboard({ initialTasks, totalTasks, initialSettings 
   const [systemPrompt, setSystemPrompt] = useState(String(initialSettings['ai.content.systemPrompt'] || ''))
   const [userPrompt, setUserPrompt] = useState(String(initialSettings['ai.content.userPrompt'] || ''))
 
+  // Trigger link state
+  const [triggerToken, setTriggerToken] = useState(String(initialSettings['ai.trigger.token'] || ''))
+  const [tokenSaving, setTokenSaving] = useState(false)
+  const [copied, setCopied] = useState<string>('')
+
   // Saving state
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
@@ -191,14 +197,43 @@ export default function AIDashboard({ initialTasks, totalTasks, initialSettings 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ agent }),
       })
-      const data = await res.json() as { success: boolean; summary: string }
-      setLastResult(r => ({ ...r, [agent]: data.summary ?? (data.success ? '完成' : '失败') }))
-      await refreshTasks()
-    } catch {
-      setLastResult(r => ({ ...r, [agent]: '请求失败，请重试' }))
+      const data = await res.json() as { success?: boolean; summary?: string; error?: string }
+      if (!res.ok) {
+        setLastResult(r => ({ ...r, [agent]: `失败: ${data.error || res.statusText || '未知错误'}` }))
+      } else {
+        setLastResult(r => ({ ...r, [agent]: data.summary ?? (data.success ? '完成' : '运行失败') }))
+        await refreshTasks()
+      }
+    } catch (e) {
+      setLastResult(r => ({ ...r, [agent]: `请求失败: ${e instanceof Error ? e.message : '网络错误'}` }))
     } finally {
       setRunning(r => ({ ...r, [agent]: false }))
     }
+  }
+
+  async function handleGenerateToken() {
+    setTokenSaving(true)
+    const token = crypto.randomUUID().replace(/-/g, '')
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 'ai.trigger.token': token }),
+      })
+      if (res.ok) setTriggerToken(token)
+    } finally { setTokenSaving(false) }
+  }
+
+  function copyText(text: string, key: string) {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(key)
+      setTimeout(() => setCopied(''), 2000)
+    })
+  }
+
+  function buildTriggerUrl(agent: 'content' | 'seo') {
+    const base = typeof window !== 'undefined' ? window.location.origin : ''
+    return `${base}/api/agents/trigger?token=${triggerToken}&agent=${agent}`
   }
 
   async function handlePreviewTopics() {
@@ -294,23 +329,7 @@ export default function AIDashboard({ initialTasks, totalTasks, initialSettings 
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
       {/* Tab bar */}
-      <div style={{ display: 'flex', gap: '4px', background: '#f4f4f5', borderRadius: '10px', padding: '4px', width: 'fit-content' }}>
-        {tabs.map(t => (
-          <button
-            key={t.key}
-            onClick={() => setActiveTab(t.key)}
-            style={{
-              padding: '7px 18px', fontSize: '13px', fontWeight: 500, border: 'none', cursor: 'pointer',
-              borderRadius: '7px', transition: 'all 0.15s',
-              background: activeTab === t.key ? '#fff' : 'transparent',
-              color: activeTab === t.key ? '#18181b' : '#71717a',
-              boxShadow: activeTab === t.key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <TabBar tabs={tabs} active={activeTab} onChange={k => setActiveTab(k as typeof activeTab)} />
 
       {/* ── Tab 1: 执行面板 ── */}
       {activeTab === 'dashboard' && (
@@ -421,6 +440,70 @@ export default function AIDashboard({ initialTasks, totalTasks, initialSettings 
                 {running['seo'] ? '优化中…' : '立即优化'}
               </button>
             </div>
+          </div>
+
+          {/* Trigger links */}
+          <div style={{ border: '1px solid #e4e4e7', borderRadius: '12px', overflow: 'hidden', background: '#fff' }}>
+            <div style={{ padding: '14px 16px', borderBottom: '1px solid #f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <p style={{ fontSize: '13px', fontWeight: 600, color: '#18181b', margin: 0 }}>触发链接</p>
+                <p style={{ fontSize: '12px', color: '#71717a', marginTop: '2px' }}>通过 GET 请求直接触发 Agent，可用于外部调度器或书签</p>
+              </div>
+              <button
+                onClick={handleGenerateToken}
+                disabled={tokenSaving}
+                style={{
+                  padding: '6px 14px', fontSize: '12px', fontWeight: 500,
+                  border: '1px solid #e4e4e7', borderRadius: '7px', cursor: tokenSaving ? 'not-allowed' : 'pointer',
+                  background: '#fff', color: '#71717a', flexShrink: 0,
+                }}
+              >
+                {tokenSaving ? '生成中…' : triggerToken ? '重新生成 Token' : '生成 Token'}
+              </button>
+            </div>
+
+            {triggerToken ? (
+              <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {(['content', 'seo'] as const).map(agent => {
+                  const url = buildTriggerUrl(agent)
+                  const key = `copy-${agent}`
+                  return (
+                    <div key={agent}>
+                      <p style={{ fontSize: '11px', fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>
+                        {agent === 'content' ? '内容 Agent' : 'SEO Agent'}
+                      </p>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <code style={{
+                          flex: 1, fontSize: '11.5px', color: '#3f3f46', background: '#f4f4f5',
+                          padding: '7px 10px', borderRadius: '7px', wordBreak: 'break-all', lineHeight: 1.5,
+                        }}>
+                          {url}
+                        </code>
+                        <button
+                          onClick={() => copyText(url, key)}
+                          style={{
+                            flexShrink: 0, padding: '7px 12px', fontSize: '12px', fontWeight: 500,
+                            border: '1px solid #e4e4e7', borderRadius: '7px', cursor: 'pointer',
+                            background: copied === key ? 'rgba(16,185,129,0.08)' : '#fff',
+                            color: copied === key ? '#059669' : '#71717a',
+                            transition: 'all 0.15s',
+                          }}
+                        >
+                          {copied === key ? '已复制' : '复制'}
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+                <p style={{ fontSize: '11px', color: '#a1a1aa', margin: 0 }}>
+                  ⚠ Token 具有完整触发权限，请勿公开分享。重新生成后旧链接立即失效。
+                </p>
+              </div>
+            ) : (
+              <div style={{ padding: '24px 16px', textAlign: 'center', color: '#a1a1aa' }}>
+                <p style={{ fontSize: '13px' }}>点击右上角「生成 Token」创建触发链接</p>
+              </div>
+            )}
           </div>
 
           {/* Task history */}

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import type { Form, FormField, FormSubmission } from '@/types'
 import { PlusIcon, TrashIcon, ArrowLeftIcon, ExternalLinkIcon, RefreshIcon, CheckIcon } from '@/components/icons'
 import { formatDate } from '@/lib/utils'
+import { TabBar } from '@/components/TabBar'
 
 const FIELD_TYPES = [
   { value: 'text', label: '单行文本' },
@@ -127,18 +128,23 @@ export default function FormEditor({ form: initialForm, submissions: initialSubs
         <Link href={`/form/${form.slug}`} target="_blank" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', padding: '0.4rem 0.75rem', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.8rem', color: 'var(--color-text-secondary)', textDecoration: 'none' }}>
           <ExternalLinkIcon size={13} /> 预览
         </Link>
-        <button onClick={handleSave} disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', padding: '0.4rem 1rem', borderRadius: '8px', background: saved ? '#16a34a' : 'var(--color-primary)', color: '#fff', border: 'none', fontWeight: 500, fontSize: '0.875rem', cursor: 'pointer', transition: 'background 0.2s' }}>
+        <button onClick={handleSave} disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '8px', background: saved ? '#10b981' : '#18181b', color: '#fff', border: 'none', fontWeight: 500, fontSize: '13px', cursor: 'pointer', transition: 'background 0.2s' }}>
           {saved ? <><CheckIcon size={14} /> 已保存</> : saving ? '保存中…' : '保存'}
         </button>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', marginBottom: '2rem', gap: '0.25rem' }}>
-        {([['basic', '基本信息'], ['fields', `字段 (${form.fields.length})`], ['webhook', 'Webhook'], ['submissions', `提交记录 (${submissionsTotal})`]] as const).map(([t, label]) => (
-          <button key={t} onClick={() => setTab(t)} style={{ padding: '0.625rem 1rem', fontSize: '0.875rem', fontWeight: tab === t ? 600 : 400, color: tab === t ? 'var(--color-primary)' : 'var(--color-text-secondary)', background: 'none', border: 'none', borderBottom: `2px solid ${tab === t ? 'var(--color-primary)' : 'transparent'}`, cursor: 'pointer', marginBottom: '-1px', transition: 'all 0.15s' }}>
-            {label}
-          </button>
-        ))}
+      <div style={{ marginBottom: '2rem' }}>
+        <TabBar
+          tabs={[
+            { key: 'basic', label: '基本信息' },
+            { key: 'fields', label: `字段 (${form.fields.length})` },
+            { key: 'webhook', label: 'Webhook' },
+            { key: 'submissions', label: `提交记录 (${submissionsTotal})` },
+          ]}
+          active={tab}
+          onChange={t => setTab(t as typeof tab)}
+        />
       </div>
 
       {/* Tab: basic */}
@@ -167,6 +173,19 @@ export default function FormEditor({ form: initialForm, submissions: initialSubs
               <option value="active">启用</option>
               <option value="paused">暂停（拒绝新提交）</option>
             </select>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '8px' }}>
+            <button onClick={handleSave} disabled={saving} style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              padding: '8px 20px', borderRadius: '8px', border: 'none',
+              background: saved ? '#10b981' : '#18181b',
+              color: '#fff', fontWeight: 500, fontSize: '13px',
+              cursor: saving ? 'not-allowed' : 'pointer',
+              transition: 'background 0.2s',
+            }}>
+              {saved && <CheckIcon size={14} />}
+              {saving ? '保存中…' : saved ? '已保存' : '保存设置'}
+            </button>
           </div>
         </div>
       )}

@@ -1,9 +1,9 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getTagBySlug, getAllTags, getContents } from '@/lib/db'
+import { getSiteSettings } from '@/lib/config'
+import { loadTheme } from '@/lib/theme-loader'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import ArchiveList from '@/themes/default/components/ArchiveList'
-
 
 const PAGE_SIZE = 12
 
@@ -21,12 +21,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function TagPage({ params, searchParams }: Props) {
-  const { slug } = await params
+  const { slug: rawSlug } = await params
+  const slug = decodeURIComponent(rawSlug)
   const { page: pageStr } = await searchParams
   const page = Math.max(1, parseInt(pageStr ?? '1', 10) || 1)
   const { env } = getCloudflareContext()
 
-  const [tag, allTags] = await Promise.all([
+  const [settings, tag, allTags] = await Promise.all([
+    getSiteSettings(env.DB),
     getTagBySlug(env.DB, slug),
     getAllTags(env.DB),
   ])
@@ -40,12 +42,15 @@ export default async function TagPage({ params, searchParams }: Props) {
     pageSize: PAGE_SIZE,
   })
 
+  const themeId = settings['theme.active'] as string | undefined
+  const theme = await loadTheme(themeId)
+  const { Tag } = theme
+
   return (
-    <ArchiveList
+    <Tag
       title={tag.name}
       slug={slug}
       posts={posts}
-      type="tag"
       pagination={pagination}
       siblings={allTags}
     />

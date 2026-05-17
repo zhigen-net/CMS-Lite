@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import type { NavItem } from '@/types'
 import { CheckIcon } from '@/components/icons'
+import { TabBar } from '@/components/TabBar'
 
 function generateId() {
   return Math.random().toString(36).slice(2, 10)
@@ -126,19 +127,11 @@ export default function MenusClient({ initialMain, initialFooter }: Props) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       {/* Tabs + Save */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', gap: '4px', background: '#f4f4f5', borderRadius: '8px', padding: '3px' }}>
-          {(['main', 'footer'] as const).map(tab => (
-            <button key={tab} onClick={() => { setActiveTab(tab); setEditing(null); setAddingNew(false) }} style={{
-              padding: '5px 16px', borderRadius: '6px', border: 'none', fontSize: '13px', fontWeight: 500,
-              background: activeTab === tab ? '#fff' : 'transparent',
-              color: activeTab === tab ? '#18181b' : '#71717a',
-              cursor: 'pointer',
-              boxShadow: activeTab === tab ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-            }}>
-              {tab === 'main' ? '主导航' : '页脚导航'}
-            </button>
-          ))}
-        </div>
+        <TabBar
+          tabs={[{ key: 'main', label: '主导航' }, { key: 'footer', label: '页脚导航' }]}
+          active={activeTab}
+          onChange={tab => { setActiveTab(tab as 'main' | 'footer'); setEditing(null); setAddingNew(false) }}
+        />
         {saveError && <span style={{ fontSize: '12px', color: '#ef4444' }}>{saveError}</span>}
         <button onClick={handleSave} disabled={saving}
           style={{
@@ -282,17 +275,12 @@ function InternalPicker({ onSelect }: { onSelect: (item: PickerItem) => void }) 
   return (
     <div style={{ border: '1px solid #e4e4e7', borderRadius: '8px', overflow: 'hidden', background: '#fff', marginBottom: '10px' }}>
       {/* Tab bar */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #f4f4f5', background: '#fafafa' }}>
-        {PICKER_TABS.map(pt => (
-          <button key={pt.id} onClick={() => switchTab(pt.id)} style={{
-            padding: '6px 14px', fontSize: '12px', border: 'none', background: 'none', cursor: 'pointer',
-            fontWeight: tab === pt.id ? 600 : 400,
-            color: tab === pt.id ? '#18181b' : '#71717a',
-            borderBottom: tab === pt.id ? '2px solid #18181b' : '2px solid transparent',
-          }}>
-            {pt.label}
-          </button>
-        ))}
+      <div style={{ padding: '6px 6px 0', background: '#fafafa', borderBottom: '1px solid #f4f4f5' }}>
+        <TabBar
+          tabs={PICKER_TABS.map(pt => ({ key: pt.id, label: pt.label }))}
+          active={tab}
+          onChange={t => switchTab(t as PickerTab)}
+        />
       </div>
       {/* Search */}
       <div style={{ padding: '8px' }}>

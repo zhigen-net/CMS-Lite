@@ -1,12 +1,28 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getContents, getCategories, getTagsWithCount } from '@/lib/db'
 import { getSiteSettings } from '@/lib/config'
-import DefaultHome from '@/themes/default/home'
+import { loadTheme } from '@/lib/theme-loader'
 import type { Category, Tag } from '@/types'
+import type { Metadata } from 'next'
 
 const PAGE_SIZE = 12
 
 interface Props { searchParams: Promise<{ page?: string }> }
+
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    const { env } = getCloudflareContext()
+    const s = await getSiteSettings(env.DB)
+    const title = s['seo.home.title'] || s['site.name'] || ''
+    const description = s['seo.home.description'] || s['site.description'] || ''
+    const ogImage = s['seo.home.ogImage'] || s['seo.defaultOgImage'] || ''
+    return {
+      title,
+      description,
+      ...(ogImage ? { openGraph: { images: [ogImage] } } : {}),
+    }
+  } catch { return {} }
+}
 
 export default async function HomePage({ searchParams }: Props) {
   const { env } = getCloudflareContext()
@@ -26,8 +42,12 @@ export default async function HomePage({ searchParams }: Props) {
     .sort((a, b) => b.count - a.count)
     .slice(0, 20)
 
+  const themeId = settings['theme.active'] as string | undefined
+  const theme = await loadTheme(themeId)
+  const { Home } = theme
+
   return (
-    <DefaultHome
+    <Home
       posts={posts}
       settings={settings}
       categories={categories}

@@ -62,10 +62,10 @@ export default function TagsClient({ initialTags }: { initialTags: TagWithCount[
   }
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: 860, margin: '0 auto' }}>
+    <div style={{ padding: '28px 32px 48px', maxWidth: 860, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
         <div>
-          <h1 style={{ fontSize: '18px', fontWeight: 700, color: '#18181b', margin: 0 }}>标签管理</h1>
+          <h1 style={{ fontSize: '18px', fontWeight: 600, color: '#18181b', letterSpacing: '-0.02em', margin: 0 }}>标签管理</h1>
           <p style={{ fontSize: '13px', color: '#71717a', margin: '4px 0 0' }}>{tags.length} 个标签</p>
         </div>
         <button onClick={openCreate} style={{

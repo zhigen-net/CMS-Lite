@@ -1,7 +1,7 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getContentBySlugWithMeta, getRelatedPosts, getFormBySlug } from '@/lib/db'
 import { getSiteSettings } from '@/lib/config'
-import DefaultPost from '@/themes/default/post'
+import { loadTheme } from '@/lib/theme-loader'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import type { Form } from '@/types'
@@ -33,7 +33,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function PostPage({ params }: Props) {
-  const { slug } = await params
+  const { slug: rawSlug } = await params
+  const slug = decodeURIComponent(rawSlug)
   const { env } = getCloudflareContext()
   const [post, settings] = await Promise.all([
     getContentBySlugWithMeta(env.DB, 'post', slug),
@@ -47,7 +48,6 @@ export default async function PostPage({ params }: Props) {
   const { html: htmlContent, slugs: postSlugs } = processFormEmbeds(rawHtml)
   const formSlugs = [...new Set([...preSlugs, ...postSlugs])]
 
-  // Fetch independently to avoid mixed-type destructuring
   const [related, formResults] = await Promise.all([
     getRelatedPosts(env.DB, post.id, 3),
     Promise.all(formSlugs.map(s => getFormBySlug(env.DB, s))),
@@ -67,13 +67,17 @@ export default async function PostPage({ params }: Props) {
     author: { '@type': 'Organization', name: settings['site.name'] || '' },
   }
 
+  const themeId = settings['theme.active'] as string | undefined
+  const theme = await loadTheme(themeId)
+  const { Post } = theme
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <DefaultPost post={{ ...post, content: htmlContent }} settings={settings} related={related} embeddedForms={embeddedForms} />
+      <Post post={{ ...post, content: htmlContent }} settings={settings} related={related} embeddedForms={embeddedForms} />
     </>
   )
 }

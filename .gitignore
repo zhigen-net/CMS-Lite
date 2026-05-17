@@ -9,3 +9,4 @@ node_modules/
 dist/
 .open-next/
 tsconfig.tsbuildinfo
+wrangler.local.toml

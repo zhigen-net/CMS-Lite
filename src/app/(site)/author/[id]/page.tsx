@@ -1,8 +1,9 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getUserById, getContents } from '@/lib/db'
+import { getSiteSettings } from '@/lib/config'
+import { loadTheme } from '@/lib/theme-loader'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import AuthorArchive from '@/themes/default/components/AuthorArchive'
 
 const PAGE_SIZE = 12
 
@@ -25,7 +26,10 @@ export default async function AuthorPage({ params, searchParams }: Props) {
   const page = Math.max(1, parseInt(pageStr ?? '1', 10) || 1)
   const { env } = getCloudflareContext()
 
-  const author = await getUserById(env.DB, id)
+  const [settings, author] = await Promise.all([
+    getSiteSettings(env.DB),
+    getUserById(env.DB, id),
+  ])
   if (!author) notFound()
 
   const { items: posts, pagination } = await getContents(env.DB, {
@@ -36,5 +40,9 @@ export default async function AuthorPage({ params, searchParams }: Props) {
     pageSize: PAGE_SIZE,
   })
 
-  return <AuthorArchive author={author} posts={posts} pagination={pagination} />
+  const themeId = settings['theme.active'] as string | undefined
+  const theme = await loadTheme(themeId)
+  const { Author } = theme
+
+  return <Author author={author} posts={posts} pagination={pagination} />
 }

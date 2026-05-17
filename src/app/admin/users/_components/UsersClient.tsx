@@ -154,17 +154,17 @@ export default function UsersClient() {
   if (loading) return <div style={{ padding: '40px', textAlign: 'center', color: '#a1a1aa', fontSize: '13px' }}>加载中…</div>
 
   return (
-    <div style={{ padding: '28px', maxWidth: '760px' }}>
+    <div style={{ padding: '28px 32px 48px', maxWidth: 860, margin: '0 auto' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
         <div>
-          <h1 style={{ fontSize: '18px', fontWeight: 700, color: '#18181b', margin: 0 }}>用户管理</h1>
-          <p style={{ fontSize: '12px', color: '#71717a', margin: '4px 0 0' }}>{users.length} 个账户</p>
+          <h1 style={{ fontSize: '18px', fontWeight: 600, color: '#18181b', letterSpacing: '-0.02em', margin: 0 }}>用户管理</h1>
+          <p style={{ fontSize: '13px', color: '#71717a', margin: '4px 0 0' }}>{users.length} 个账户</p>
         </div>
         <button onClick={() => { setCreating(true); setCreateError('') }} style={{
           display: 'flex', alignItems: 'center', gap: '6px',
           padding: '8px 16px', borderRadius: '8px', border: 'none',
-          background: '#18181b', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+          background: '#18181b', color: '#fff', fontSize: '13px', fontWeight: 500, cursor: 'pointer',
         }}>
           <PlusIcon size={13} /> 新建用户
         </button>

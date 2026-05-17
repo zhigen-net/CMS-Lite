@@ -81,6 +81,7 @@ export default function ContentEditor({ contentType, initialContent }: Props) {
   const [categories, setCategories] = useState<Category[]>([])
   const [allTags, setAllTags] = useState<Tag[]>([])
   const [saving, setSaving] = useState(false)
+  const [saveSuccess, setSaveSuccess] = useState(false)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiPanel, setAiPanel] = useState(false)
   const [aiTab, setAiTab] = useState<'generate' | 'rewrite' | 'translate'>('generate')
@@ -101,6 +102,8 @@ export default function ContentEditor({ contentType, initialContent }: Props) {
   const [pickerLoading, setPickerLoading] = useState(false)
   const tagInputRef = useRef<HTMLInputElement>(null)
   const coverInputRef = useRef<HTMLInputElement>(null)
+  const isDirtyRef = useRef(false)
+  const savedRef = useRef(false)
 
   const autoSlug = useCallback((t: string) =>
     t.toLowerCase().replace(/\s+/g, '-').replace(/[^\w\u4e00-\u9fa5-]/g, '').slice(0, 80), [])
@@ -133,6 +136,21 @@ export default function ContentEditor({ contentType, initialContent }: Props) {
     setTagSuggestions(allTags.filter(t => t.name.toLowerCase().includes(q) && !tags.includes(t.name)).slice(0, 6))
   }, [tagInput, allTags, tags])
 
+  useEffect(() => {
+    isDirtyRef.current = true
+  }, [title, slug, content, excerpt, status, metaTitle, metaDesc, categoryIds, tags, coverImage, parentId, sortOrder])
+
+  useEffect(() => {
+    if (!isEdit) return
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      if (isDirtyRef.current && !savedRef.current) {
+        e.preventDefault()
+      }
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [isEdit])
+
   function handleTitleChange(v: string) {
     setTitle(v)
     if (!isEdit || !initialContent?.slug) setSlug(autoSlug(v))
@@ -157,14 +175,17 @@ export default function ContentEditor({ contentType, initialContent }: Props) {
   }
 
   async function handleAddCategory() {
-    if (!newCatName.trim()) return
+    const trimmed = newCatName.trim()
+    if (!trimmed) return
+    const duplicate = categories.some(c => c.name.toLowerCase() === trimmed.toLowerCase())
+    if (duplicate) { setError(`分类「${trimmed}」已存在`); return }
     setAddingCat(true)
     try {
       const res = await fetch('/api/categories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: newCatName.trim(),
+          name: trimmed,
           content_type: contentType.id,
           parent_id: newCatParent || undefined,
         }),
@@ -176,16 +197,24 @@ export default function ContentEditor({ contentType, initialContent }: Props) {
         setNewCatName('')
         setNewCatParent('')
         setShowNewCatForm(false)
+      } else {
+        const d = await res.json() as { error?: string }
+        setError(typeof d.error === 'string' ? d.error : '分类创建失败')
       }
     } finally { setAddingCat(false) }
   }
 
   async function handleSave() {
     if (!title.trim()) { setError('标题不能为空'); return }
+    const finalSlug = slug || autoSlug(title)
+    if (finalSlug && !/^[a-z0-9\u4e00-\u9fa5][a-z0-9\u4e00-\u9fa5-]*$/.test(finalSlug)) {
+      setError('URL Slug 只能包含小写字母、数字、汉字和连字符，且不能以连字符开头')
+      return
+    }
     setSaving(true); setError('')
     try {
       const body: Record<string, unknown> = {
-        type: contentType.id, title, slug: slug || autoSlug(title),
+        type: contentType.id, title, slug: finalSlug,
         content, excerpt, status,
         meta_title: metaTitle, meta_description: metaDesc,
         category_ids: categoryIds,
@@ -200,8 +229,16 @@ export default function ContentEditor({ contentType, initialContent }: Props) {
         isEdit ? `/api/contents/${initialContent!.id}` : '/api/contents',
         { method: isEdit ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
       )
-      if (!res.ok) { const d = await res.json() as { error?: string }; setError(d.error || '保存失败'); return }
-      if (!isEdit) { const d = await res.json() as { id: string }; router.replace(`/admin/${contentType.id}/${d.id}`) }
+      if (!res.ok) { const d = await res.json() as { error?: string }; setError(typeof d.error === 'string' ? d.error : '保存失败'); return }
+      if (isEdit) {
+        isDirtyRef.current = false
+        savedRef.current = true
+        setSaveSuccess(true)
+        setTimeout(() => { setSaveSuccess(false); savedRef.current = false }, 2000)
+      } else {
+        const d = await res.json() as { id: string }
+        window.location.href = `/admin/${contentType.id}/${d.id}`
+      }
     } finally { setSaving(false) }
   }
 
@@ -248,7 +285,15 @@ export default function ContentEditor({ contentType, initialContent }: Props) {
     setAiLoading(true)
     try {
       const res = await fetch('/api/ai/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ topic: aiPrompt, type: contentType.id, length: 'medium' }) })
-      if (res.ok) { const d = await res.json() as { id: string }; router.push(`/admin/${contentType.id}/${d.id}`) }
+      if (res.ok) {
+        const d = await res.json() as { id: string }
+        router.push(`/admin/${contentType.id}/${d.id}`)
+      } else {
+        const d = await res.json() as { error?: string }
+        setError(typeof d.error === 'string' ? d.error : 'AI 生成失败，请稍后重试')
+      }
+    } catch {
+      setError('网络错误，请检查连接后重试')
     } finally { setAiLoading(false); setAiPanel(false); setAiPrompt('') }
   }
 
@@ -262,7 +307,12 @@ export default function ContentEditor({ contentType, initialContent }: Props) {
         if (d.metaTitle) setMetaTitle(d.metaTitle)
         if (d.metaDescription) setMetaDesc(d.metaDescription)
         if (!excerpt && d.excerpt) setExcerpt(d.excerpt)
+      } else {
+        const d = await res.json() as { error?: string }
+        setError(typeof d.error === 'string' ? d.error : 'AI SEO 优化失败')
       }
+    } catch {
+      setError('网络错误，请检查连接后重试')
     } finally { setAiLoading(false) }
   }
 
@@ -274,7 +324,12 @@ export default function ContentEditor({ contentType, initialContent }: Props) {
       if (res.ok) {
         const d = await res.json() as { content: string }
         if (d.content) setContent(d.content)
+      } else {
+        const d = await res.json() as { error?: string }
+        setError(typeof d.error === 'string' ? d.error : 'AI 改写失败')
       }
+    } catch {
+      setError('网络错误，请检查连接后重试')
     } finally { setAiLoading(false) }
   }
 
@@ -287,7 +342,12 @@ export default function ContentEditor({ contentType, initialContent }: Props) {
         const d = await res.json() as { title: string; content: string }
         if (d.title) setTitle(d.title)
         if (d.content) setContent(d.content)
+      } else {
+        const d = await res.json() as { error?: string }
+        setError(typeof d.error === 'string' ? d.error : 'AI 翻译失败')
       }
+    } catch {
+      setError('网络错误，请检查连接后重试')
     } finally { setAiLoading(false) }
   }
 
@@ -345,7 +405,8 @@ export default function ContentEditor({ contentType, initialContent }: Props) {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-            {error && <span style={{ fontSize: '12px', color: '#ef4444', maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{error}</span>}
+            {saveSuccess && <span style={{ fontSize: '12px', color: '#10b981', fontWeight: 500 }}>已保存 ✓</span>}
+            {error && <span style={{ fontSize: '12px', color: '#ef4444', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={error}>{error}</span>}
             <button onClick={() => setAiPanel(!aiPanel)} style={{
               display: 'flex', alignItems: 'center', gap: '4px',
               padding: '6px 10px', fontSize: '13px', fontWeight: 500,

@@ -1,7 +1,7 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getContentBySlug, getFormBySlug } from '@/lib/db'
 import { getSiteSettings } from '@/lib/config'
-import DefaultPost from '@/themes/default/post'
+import { loadTheme } from '@/lib/theme-loader'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import type { Form } from '@/types'
@@ -33,7 +33,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function PagePage({ params }: Props) {
-  const { slug } = await params
+  const { slug: rawSlug } = await params
+  const slug = decodeURIComponent(rawSlug)
   const { env } = getCloudflareContext()
   const [page, settings] = await Promise.all([
     getContentBySlug(env.DB, 'page', slug),
@@ -49,5 +50,9 @@ export default async function PagePage({ params }: Props) {
   const formResults = await Promise.all(formSlugs.map(s => getFormBySlug(env.DB, s)))
   const embeddedForms = formResults.filter((f): f is Form => f !== null)
 
-  return <DefaultPost post={{ ...page, content: htmlContent }} settings={settings} embeddedForms={embeddedForms} />
+  const themeId = settings['theme.active'] as string | undefined
+  const theme = await loadTheme(themeId)
+  const { Page } = theme
+
+  return <Page post={{ ...page, content: htmlContent }} settings={settings} embeddedForms={embeddedForms} />
 }

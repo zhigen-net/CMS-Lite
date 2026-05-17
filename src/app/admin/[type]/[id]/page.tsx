@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getContentWithMeta, getContentType } from '@/lib/db'
 import { notFound } from 'next/navigation'

@@ -19,7 +19,7 @@ import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { runAgent } from '@/lib/agents'
 import type { AgentType } from '@/lib/agents'
 import { z } from 'zod'
-import { listUsers } from '@/lib/db'
+import { listUsers, publishScheduled } from '@/lib/db'
 
 
 const schema = z.object({
@@ -45,6 +45,14 @@ export async function POST(request: Request) {
   const adminUser = users.find(u => u.role === 'admin')
   const userId = adminUser?.id
 
+  // 定时发布：先于 agents 运行，将到期的 scheduled 内容切换为 published
+  let scheduledResult: { published: number; ids: string[] } = { published: 0, ids: [] }
+  try {
+    scheduledResult = await publishScheduled(env.DB)
+  } catch (err) {
+    console.error('publishScheduled error', err)
+  }
+
   const results: Record<string, unknown> = {}
   for (const agent of agents) {
     try {
@@ -55,5 +63,5 @@ export async function POST(request: Request) {
     }
   }
 
-  return Response.json({ ok: true, results })
+  return Response.json({ ok: true, scheduled: scheduledResult, results })
 }

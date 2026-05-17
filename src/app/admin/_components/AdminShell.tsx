@@ -66,18 +66,12 @@ function UserMenu() {
   const [me, setMe] = useState<Me | null>(null)
   const [open, setOpen] = useState(false)
   const [dropPos, setDropPos] = useState({ top: 0, left: 0, width: 0 })
-  const [modal, setModal] = useState<'profile' | 'password' | null>(null)
-  const [profileName, setProfileName] = useState('')
-  const [curPwd, setCurPwd] = useState('')
-  const [newPwd, setNewPwd] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [msg, setMsg] = useState('')
   const btnRef = useRef<HTMLButtonElement>(null)
   const dropRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetch('/api/users/me').then(r => r.json()).then((d: unknown) => {
-      const data = d as Me; setMe(data); setProfileName(data.name ?? '')
+      const data = d as Me; setMe(data)
     }).catch(() => {})
   }, [])
 
@@ -107,43 +101,10 @@ function UserMenu() {
     router.push('/admin/login')
   }
 
-  async function saveProfile() {
-    setSaving(true); setMsg('')
-    const res = await fetch('/api/users/me', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: profileName }),
-    })
-    setSaving(false)
-    if (res.ok) { setMe(m => m ? { ...m, name: profileName } : m); setModal(null) }
-    else { const d = await res.json() as { error?: string }; setMsg(d.error ?? '保存失败') }
-  }
-
-  async function savePassword() {
-    setSaving(true); setMsg('')
-    const res = await fetch('/api/users/me', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ currentPassword: curPwd, newPassword: newPwd }),
-    })
-    setSaving(false)
-    if (res.ok) { setCurPwd(''); setNewPwd(''); setModal(null) }
-    else { const d = await res.json() as { error?: string }; setMsg(d.error ?? '修改失败') }
-  }
-
-  function openModal(m: 'profile' | 'password') {
-    setMsg(''); setOpen(false); setModal(m)
-  }
 
   if (!me) return null
 
   const initials = (me.name || me.email || '?').slice(0, 1).toUpperCase()
-
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '7px 10px', fontSize: '13px',
-    border: '1px solid #e4e4e7', borderRadius: '7px',
-    outline: 'none', boxSizing: 'border-box', color: '#18181b',
-  }
 
   const dropdownEl = open ? createPortal(
     <div ref={dropRef} style={{
@@ -157,19 +118,21 @@ function UserMenu() {
       padding: '4px', zIndex: 9999,
     }}>
       {[
-        { icon: UserIcon, label: '修改资料', action: () => openModal('profile') },
-        { icon: KeyIcon, label: '修改密码', action: () => openModal('password') },
-      ].map(({ icon: Icon, label, action }) => (
-        <button key={label} onClick={action} style={{
+        { icon: UserIcon, label: '修改资料', href: '/admin/account?tab=profile' },
+        { icon: KeyIcon,  label: '修改密码', href: '/admin/account?tab=password' },
+        { icon: KeyIcon,  label: 'API 管理', href: '/admin/account?tab=apikeys' },
+      ].map(({ icon: Icon, label, href }) => (
+        <a key={label} href={href} style={{
           width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
           padding: '7px 10px', borderRadius: '6px', border: 'none',
           background: 'none', cursor: 'pointer', fontSize: '13px', color: '#374151',
+          textDecoration: 'none',
         }}
           onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = '#f4f4f5')}
           onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = 'none')}
         >
           <Icon size={13} />{label}
-        </button>
+        </a>
       ))}
       <div style={{ height: '1px', background: '#f0f0f0', margin: '3px 4px' }} />
       <button onClick={logout} style={{
@@ -182,71 +145,6 @@ function UserMenu() {
       >
         <LogOutIcon size={13} />退出登录
       </button>
-    </div>,
-    document.body
-  ) : null
-
-  const modalEl = modal ? createPortal(
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
-      zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '1rem',
-    }} onClick={e => { if (e.target === e.currentTarget) setModal(null) }}>
-      <div style={{
-        background: '#fff', borderRadius: '14px', padding: '24px',
-        width: '100%', maxWidth: '380px',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
-      }} onClick={e => e.stopPropagation()}>
-        <h2 style={{ fontSize: '15px', fontWeight: 600, color: '#18181b', margin: '0 0 18px' }}>
-          {modal === 'profile' ? '修改资料' : '修改密码'}
-        </h2>
-
-        {modal === 'profile' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 500, color: '#374151', display: 'block', marginBottom: '5px' }}>显示名称</label>
-              <input value={profileName} onChange={e => setProfileName(e.target.value)} style={inputStyle} placeholder="你的名字" />
-            </div>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 500, color: '#374151', display: 'block', marginBottom: '5px' }}>邮箱</label>
-              <input value={me.email} disabled style={{ ...inputStyle, background: '#f9fafb', color: '#9ca3af' }} />
-            </div>
-          </div>
-        )}
-
-        {modal === 'password' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 500, color: '#374151', display: 'block', marginBottom: '5px' }}>当前密码</label>
-              <input type="password" value={curPwd} onChange={e => setCurPwd(e.target.value)} style={inputStyle} placeholder="输入当前密码" />
-            </div>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 500, color: '#374151', display: 'block', marginBottom: '5px' }}>新密码</label>
-              <input type="password" value={newPwd} onChange={e => setNewPwd(e.target.value)} style={inputStyle} placeholder="至少 6 位" />
-            </div>
-          </div>
-        )}
-
-        {msg && (
-          <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '10px' }}>{msg}</p>
-        )}
-
-        <div style={{ display: 'flex', gap: '8px', marginTop: '20px', justifyContent: 'flex-end' }}>
-          <button onClick={() => setModal(null)} style={{
-            padding: '7px 16px', borderRadius: '7px', border: '1px solid #e4e4e7',
-            background: '#fff', fontSize: '13px', cursor: 'pointer', color: '#374151',
-          }}>取消</button>
-          <button
-            onClick={modal === 'profile' ? saveProfile : savePassword}
-            disabled={saving}
-            style={{
-              padding: '7px 16px', borderRadius: '7px', border: 'none',
-              background: '#18181b', color: '#fff', fontSize: '13px',
-              cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1,
-            }}
-          >{saving ? '保存中…' : '保存'}</button>
-        </div>
-      </div>
     </div>,
     document.body
   ) : null
@@ -279,7 +177,6 @@ function UserMenu() {
         </div>
       </button>
       {dropdownEl}
-      {modalEl}
     </>
   )
 }

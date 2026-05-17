@@ -77,3 +77,17 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   const inputHash = await hashPassword(password)
   return inputHash === hash
 }
+
+export async function hashApiKey(key: string): Promise<string> {
+  const data = new TextEncoder().encode(key)
+  const hash = await crypto.subtle.digest('SHA-256', data)
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+// 生成 API Key：cmsk_ + 32位随机 hex
+export function generateApiKey(): string {
+  const bytes = new Uint8Array(16)
+  crypto.getRandomValues(bytes)
+  const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+  return `cmsk_${hex}`
+}

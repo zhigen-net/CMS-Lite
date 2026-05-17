@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import { CheckIcon } from '@/components/icons'
+import { TabBar } from '@/components/TabBar'
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
 
@@ -103,26 +104,14 @@ export default function ThemeEditorClient({ initialCss, initialHeaderHtml, initi
         display: 'flex', alignItems: 'center', gap: 0,
         borderBottom: '1px solid #e4e4e7',
         background: '#fafafa',
-        padding: '0 8px',
+        padding: '8px 8px',
         flexShrink: 0,
       }}>
-        {TABS.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            style={{
-              padding: '10px 16px',
-              fontSize: '12px', fontWeight: activeTab === tab.id ? 600 : 400,
-              color: activeTab === tab.id ? '#18181b' : '#71717a',
-              border: 'none', borderBottom: activeTab === tab.id ? '2px solid #18181b' : '2px solid transparent',
-              background: 'none', cursor: 'pointer',
-              transition: 'color 0.1s',
-              marginBottom: '-1px',
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
+        <TabBar
+          tabs={TABS.map(t => ({ key: t.id, label: t.label }))}
+          active={activeTab}
+          onChange={setActiveTab}
+        />
         <div style={{ flex: 1 }} />
         {/* Save button */}
         <button

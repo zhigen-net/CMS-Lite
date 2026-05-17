@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getContents, getContentType } from '@/lib/db'
 import { notFound } from 'next/navigation'
@@ -25,7 +27,7 @@ export default async function ContentListPage({ params, searchParams }: Props) {
   const { items, pagination } = await getContents(env.DB, { type, page, pageSize: PAGE_SIZE })
 
   return (
-    <div style={{ padding: '32px 32px 48px' }}>
+    <div style={{ padding: '28px 32px 48px', maxWidth: 860, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
         <div>
           <h1 style={{ fontSize: '18px', fontWeight: 600, color: '#18181b', letterSpacing: '-0.02em', margin: 0 }}>

@@ -230,6 +230,21 @@ export async function getCategories(db: D1Database, contentType: string): Promis
   return rows.results
 }
 
+export type CategoryWithCount = Category & { count: number }
+
+export async function getCategoriesWithCount(db: D1Database, contentType: string): Promise<CategoryWithCount[]> {
+  const rows = await db.prepare(`
+    SELECT c.*, COUNT(DISTINCT cc.content_id) as count
+    FROM categories c
+    LEFT JOIN content_categories cc ON cc.category_id = c.id
+    LEFT JOIN contents cnt ON cnt.id = cc.content_id AND cnt.status = 'published'
+    WHERE c.content_type = ?
+    GROUP BY c.id
+    ORDER BY c.sort_order ASC, c.name ASC
+  `).bind(contentType).all<CategoryWithCount>()
+  return rows.results
+}
+
 export async function createCategory(db: D1Database, data: { id: string; content_type: string; name: string; slug: string; parent_id?: string | null; description?: string | null }): Promise<void> {
   await db.prepare(
     'INSERT INTO categories (id, content_type, name, slug, parent_id, description) VALUES (?, ?, ?, ?, ?, ?)'
@@ -712,4 +727,60 @@ export async function deleteFormSubmission(db: D1Database, id: string): Promise<
 export async function getFormSubmissionById(db: D1Database, id: string): Promise<FormSubmission | null> {
   const row = await db.prepare('SELECT * FROM form_submissions WHERE id = ?').bind(id).first<Record<string, unknown>>()
   return row ? parseSubmission(row) : null
+}
+
+// ── API Keys ──────────────────────────────────────────────
+
+export async function createApiKey(
+  db: D1Database,
+  userId: string,
+  name: string,
+  permissions: string[],
+  keyHash: string,
+  keyPrefix: string,
+): Promise<string> {
+  const id = crypto.randomUUID()
+  const now = Math.floor(Date.now() / 1000)
+  await db.prepare(
+    'INSERT INTO api_keys (id, user_id, name, key_prefix, key_hash, permissions, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  ).bind(id, userId, name, keyPrefix, keyHash, JSON.stringify(permissions), now).run()
+  return id
+}
+
+export async function listApiKeys(db: D1Database, userId: string): Promise<import('@/types').ApiKey[]> {
+  const rows = await db.prepare(
+    'SELECT id, user_id, name, key_prefix, permissions, created_at, last_used_at FROM api_keys WHERE user_id = ? ORDER BY created_at DESC'
+  ).bind(userId).all()
+  return (rows.results as Record<string, unknown>[]).map(r => ({
+    ...r,
+    permissions: JSON.parse(r.permissions as string),
+  })) as import('@/types').ApiKey[]
+}
+
+export async function deleteApiKey(db: D1Database, id: string, userId: string): Promise<void> {
+  await db.prepare('DELETE FROM api_keys WHERE id = ? AND user_id = ?').bind(id, userId).run()
+}
+
+export async function getApiKeyByHash(db: D1Database, hash: string): Promise<{ user_id: string; permissions: string[] } | null> {
+  const row = await db.prepare(
+    'SELECT user_id, permissions FROM api_keys WHERE key_hash = ?'
+  ).bind(hash).first() as Record<string, unknown> | null
+  if (!row) return null
+  // update last_used_at async (fire and forget)
+  db.prepare('UPDATE api_keys SET last_used_at = ? WHERE key_hash = ?')
+    .bind(Math.floor(Date.now() / 1000), hash).run().catch(() => {})
+  return { user_id: row.user_id as string, permissions: JSON.parse(row.permissions as string) }
+}
+
+export async function publishScheduled(db: D1Database): Promise<{ published: number; ids: string[] }> {
+  const now = Math.floor(Date.now() / 1000)
+  const rows = await db.prepare(
+    `SELECT id FROM contents WHERE status = 'scheduled' AND scheduled_at IS NOT NULL AND scheduled_at <= ?`
+  ).bind(now).all<{ id: string }>()
+  const ids = rows.results.map(r => r.id)
+  if (ids.length === 0) return { published: 0, ids: [] }
+  await db.prepare(
+    `UPDATE contents SET status = 'published', published_at = scheduled_at, updated_at = ? WHERE status = 'scheduled' AND scheduled_at <= ?`
+  ).bind(now, now).run()
+  return { published: ids.length, ids }
 }

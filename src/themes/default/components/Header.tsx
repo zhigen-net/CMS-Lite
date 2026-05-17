@@ -85,14 +85,23 @@ export default function Header({ settings }: Props) {
           height: '64px', gap: '1rem',
         }}>
           {/* Logo */}
-          <Link href="/" style={{ textDecoration: 'none', flexShrink: 0, marginRight: '0.5rem' }}>
+          <Link href="/" style={{ textDecoration: 'none', flexShrink: 0, marginRight: '0.5rem', display: 'flex', alignItems: 'center', gap: '9px' }}>
             {logo
-              ? <img src={logo} alt={siteName} style={{ height: '28px', width: 'auto' }} />
-              : <span style={{
-                  fontFamily: 'var(--font-heading)', fontWeight: 800,
-                  fontSize: '1.2rem', color: 'var(--color-text)',
-                  letterSpacing: '-0.04em',
-                }}>{siteName}</span>
+              ? <img src={logo} alt={siteName} style={{ height: '32px', width: 'auto' }} />
+              : <>
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    width: '30px', height: '30px', borderRadius: '8px',
+                    background: 'var(--color-primary)', color: '#fff',
+                    fontFamily: 'var(--font-heading)', fontWeight: 900,
+                    fontSize: '0.95rem', letterSpacing: '-0.02em', flexShrink: 0,
+                  }}>{siteName.slice(0, 1).toUpperCase()}</span>
+                  <span style={{
+                    fontFamily: 'var(--font-heading)', fontWeight: 800,
+                    fontSize: '1.1rem', color: 'var(--color-text)',
+                    letterSpacing: '-0.04em',
+                  }}>{siteName}</span>
+                </>
             }
           </Link>
 
@@ -136,10 +145,13 @@ export default function Header({ settings }: Props) {
             justifyContent: 'space-between', padding: '0 1.5rem',
             borderBottom: '1px solid var(--color-border)', flexShrink: 0,
           }}>
-            <Link href="/" onClick={() => setOpen(false)} style={{ textDecoration: 'none' }}>
+            <Link href="/" onClick={() => setOpen(false)} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '9px' }}>
               {logo
-                ? <img src={logo} alt={siteName} style={{ height: '28px', width: 'auto' }} />
-                : <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: '1.2rem', color: 'var(--color-text)', letterSpacing: '-0.04em' }}>{siteName}</span>
+                ? <img src={logo} alt={siteName} style={{ height: '32px', width: 'auto' }} />
+                : <>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '8px', background: 'var(--color-primary)', color: '#fff', fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: '0.95rem', flexShrink: 0 }}>{siteName.slice(0, 1).toUpperCase()}</span>
+                    <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: '1.1rem', color: 'var(--color-text)', letterSpacing: '-0.04em' }}>{siteName}</span>
+                  </>
               }
             </Link>
             <button onClick={() => setOpen(false)} className="header-icon-btn">

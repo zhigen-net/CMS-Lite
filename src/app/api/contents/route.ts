@@ -27,17 +27,17 @@ const createSchema = z.object({
   type: z.string(),
   title: z.string().min(1),
   slug: z.string().optional(),
-  content: z.string().optional(),
-  excerpt: z.string().optional(),
+  content: z.string().nullable().optional(),
+  excerpt: z.string().nullable().optional(),
   status: z.enum(['draft', 'published', 'scheduled']).default('draft'),
   author_id: z.string().optional(),
   category_ids: z.array(z.string()).optional(),
-  cover_image: z.string().optional(),
-  published_at: z.number().optional(),
-  scheduled_at: z.number().optional(),
-  meta_title: z.string().optional(),
-  meta_description: z.string().optional(),
-  og_image: z.string().optional(),
+  cover_image: z.string().nullable().optional(),
+  published_at: z.number().nullable().optional(),
+  scheduled_at: z.number().nullable().optional(),
+  meta_title: z.string().nullable().optional(),
+  meta_description: z.string().nullable().optional(),
+  og_image: z.string().nullable().optional(),
   tags: z.array(z.string()).optional(),
   parent_id: z.string().nullable().optional(),
   sort_order: z.number().optional(),
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
   const body = await request.json()
   const parsed = createSchema.safeParse(body)
   if (!parsed.success) {
-    return Response.json({ error: parsed.error.flatten() }, { status: 400 })
+    return Response.json({ error: parsed.error.issues.map(i => i.message).join('; ') }, { status: 400 })
   }
 
   const data = parsed.data
