@@ -25,7 +25,7 @@ jobs:
       # 项目名优先用 Secret CMS_PROJECT_NAME，否则用仓库名
       - name: Set project name
         run: |
-          RAW="${{ secrets.CMS_PROJECT_NAME || github.event.repository.name }}"
+          RAW="${{ secrets.CMS_PROJECT_NAME || format('{0}-{1}', github.event.repository.name, github.ref_name) }}"
           PROJECT="${RAW,,}"
           echo "PROJECT_NAME=$PROJECT" >> $GITHUB_ENV
           echo "DB_NAME=$PROJECT-db" >> $GITHUB_ENV
