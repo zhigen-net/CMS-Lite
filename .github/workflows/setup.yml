@@ -33,16 +33,17 @@ jobs:
 
       - name: Create D1 database
         run: |
+          # 先尝试创建（已存在会报错，忽略）
+          npx wrangler d1 create "$DB_NAME" 2>&1 || true
+          # 按名称查 UUID（无论是新建还是已有）
           DB_LIST=$(npx wrangler d1 list --json)
           DB_ID=$(echo "$DB_LIST" | jq -r --arg name "$DB_NAME" '.[] | select(.name==$name) | .uuid')
           if [ -z "$DB_ID" ]; then
-            echo "Creating D1 database: $DB_NAME"
-            DB_OUTPUT=$(npx wrangler d1 create "$DB_NAME" --json)
-            DB_ID=$(echo "$DB_OUTPUT" | jq -r '.uuid')
-          else
-            echo "D1 database already exists: $DB_NAME ($DB_ID)"
+            echo "❌ Failed to create or find database: $DB_NAME"
+            exit 1
           fi
           echo "DB_ID=$DB_ID" >> $GITHUB_ENV
+          echo "✅ Database ready: $DB_NAME ($DB_ID)"
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
