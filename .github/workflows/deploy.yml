@@ -25,14 +25,23 @@ jobs:
 
       - name: Set project name
         run: |
-          RAW="${{ secrets.CMS_PROJECT_NAME || format('{0}-{1}', github.event.repository.name, github.ref_name) }}"
-          PROJECT="${RAW,,}"
-          PROJECT="${PROJECT//[^a-z0-9-]/-}"
+          CMS_CUSTOM="${{ secrets.CMS_PROJECT_NAME }}"
+          if [ -n "$CMS_CUSTOM" ]; then
+            RAW="$CMS_CUSTOM"
+          else
+            # owner首词（按 - _ 分割）+ 完整repo名 + branch首词（按 / 分割）
+            OWNER_WORD=$(echo "${{ github.event.repository.owner.login }}" | tr '[:upper:]' '[:lower:]' | sed 's/[-_].*//')
+            REPO_CLEAN=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g; s/-\+/-/g; s/^-//; s/-$//')
+            BRANCH_WORD=$(echo "${{ github.ref_name }}" | tr '[:upper:]' '[:lower:]' | sed 's/\/.*//' | sed 's/[^a-z0-9-]/-/g; s/-\+/-/g; s/^-//; s/-$//')
+            RAW="${OWNER_WORD}-${REPO_CLEAN}-${BRANCH_WORD}"
+          fi
+          PROJECT="${RAW//[^a-z0-9-]/-}"
           PROJECT=$(echo "$PROJECT" | sed 's/-\+/-/g; s/^-//; s/-$//')
           PROJECT=$(echo "${PROJECT:0:63}" | sed 's/-$//')
           echo "PROJECT_NAME=$PROJECT" >> $GITHUB_ENV
           echo "DB_NAME=$PROJECT-db" >> $GITHUB_ENV
           echo "BUCKET_NAME=$PROJECT-media" >> $GITHUB_ENV
+          echo "→ Project name: $PROJECT"
 
       - name: Get D1 database ID
         run: |
