@@ -8,4 +8,5 @@ interface CloudflareEnv {
   GITHUB_REPO: string
   NEXT_PUBLIC_SITE_URL: string
   R2_PUBLIC_URL: string
+  CRON_SECRET: string
 }
