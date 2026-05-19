@@ -33,6 +33,7 @@ export async function GET(request: Request) {
     const { taskId, result } = await runAgent(agent, env, adminUser?.id)
     return Response.json({ ok: true, taskId, ...result })
   } catch (err) {
-    return Response.json({ ok: false, error: String(err) }, { status: 500 })
+    console.error('[agent trigger]', err)
+    return Response.json({ ok: false, error: '执行失败' }, { status: 500 })
   }
 }

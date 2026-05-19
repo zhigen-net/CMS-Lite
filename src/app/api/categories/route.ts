@@ -7,6 +7,10 @@ import { generateId, slugify } from '@/lib/utils'
 // GET /api/categories?type=post
 export async function GET(request: Request) {
   const { env } = getCloudflareContext()
+  const user = await getCurrentUser(request, env)
+  const authError = requireAdmin(user)
+  if (authError) return authError
+
   const type = new URL(request.url).searchParams.get('type') ?? 'post'
   const categories = await getCategories(env.DB, type)
   return Response.json(categories)

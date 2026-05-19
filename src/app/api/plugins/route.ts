@@ -3,8 +3,12 @@ import { getPlugins, setPluginEnabled } from '@/lib/db'
 import { getCurrentUser, requireAdmin } from '@/lib/auth'
 
 
-export async function GET() {
+export async function GET(request: Request) {
   const { env } = getCloudflareContext()
+  const user = await getCurrentUser(request, env)
+  const authError = requireAdmin(user)
+  if (authError) return authError
+
   const plugins = await getPlugins(env.DB)
   return Response.json(plugins)
 }

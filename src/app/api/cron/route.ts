@@ -59,7 +59,8 @@ export async function POST(request: Request) {
       const { taskId, result } = await runAgent(agent as AgentType, env, userId)
       results[agent] = { taskId, ...result }
     } catch (err) {
-      results[agent] = { success: false, error: String(err) }
+      console.error(`[cron] agent ${agent} failed`, err)
+      results[agent] = { success: false, error: '执行失败' }
     }
   }
 
