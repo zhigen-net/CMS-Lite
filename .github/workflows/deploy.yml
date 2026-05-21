@@ -70,6 +70,11 @@ jobs:
             "INSERT OR IGNORE INTO migrations(version,name) SELECT 7,'0007_categories_sort_order' WHERE (SELECT COUNT(*) FROM pragma_table_info('categories') WHERE name='sort_order')>0" \
             2>/dev/null || true
 
+          # Repair migration 9: re-encode storage settings that were stored as plain strings instead of JSON
+          npx wrangler d1 execute "$DB_NAME" --remote --command \
+            "UPDATE settings SET value='\"r2\"' WHERE key='storage.driver' AND value='r2'; UPDATE settings SET value='\"\"' WHERE key='storage.s3.endpoint' AND value=''; UPDATE settings SET value='\"\"' WHERE key='storage.s3.bucket' AND value=''; UPDATE settings SET value='\"auto\"' WHERE key='storage.s3.region' AND value='auto'; UPDATE settings SET value='\"\"' WHERE key='storage.s3.public_url' AND value=''" \
+            2>/dev/null || true
+
           for f in $(ls migrations/*.sql | sort); do
             VERSION=$(basename "$f" | grep -o '^[0-9]*' | sed 's/^0*//')
             APPLIED=$(npx wrangler d1 execute "$DB_NAME" --remote \
