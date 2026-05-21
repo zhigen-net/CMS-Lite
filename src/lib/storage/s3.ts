@@ -16,11 +16,11 @@ const enc = (s: string) => new TextEncoder().encode(s)
 const buf2hex = (b: ArrayBuffer) =>
   [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('')
 
-async function sha256(data: ArrayBuffer): Promise<string> {
+async function sha256(data: BufferSource): Promise<string> {
   return buf2hex(await crypto.subtle.digest('SHA-256', data))
 }
 
-async function hmac(key: ArrayBuffer | CryptoKey, data: ArrayBuffer): Promise<ArrayBuffer> {
+async function hmac(key: BufferSource | CryptoKey, data: BufferSource): Promise<ArrayBuffer> {
   const k = key instanceof CryptoKey
     ? key
     : await crypto.subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
@@ -71,7 +71,7 @@ async function signRequest(
 
   const credScope   = `${date}/${region}/s3/aws4_request`
   const stringToSign = ['AWS4-HMAC-SHA256', datetime, credScope,
-    await sha256(enc(canonRequest).buffer as ArrayBuffer)].join('\n')
+    await sha256(enc(canonRequest))].join('\n')
 
   const key = await signingKey(secretAccessKey, date, region)
   const sig = buf2hex(await hmac(key, enc(stringToSign)))
