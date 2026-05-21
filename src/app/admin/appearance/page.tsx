@@ -1,6 +1,6 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getSiteSettings } from '@/lib/config'
-import themes from '@/themes'
+import { themes } from '@/themes'
 import type { NavItem } from '@/types'
 import AppearanceHub from './_components/AppearanceHub'
 

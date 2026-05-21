@@ -1,6 +1,6 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getSiteSettings } from '@/lib/config'
-import themes from '@/themes'
+import { themes } from '@/themes'
 import ThemesClient from './_components/ThemesClient'
 
 export default async function ThemesPage() {
