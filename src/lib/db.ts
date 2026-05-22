@@ -130,8 +130,6 @@ export async function getContents(
     params.push(tagId)
   }
 
-  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
-
   if (search) {
     const ftsResult = await db
       .prepare(`SELECT id FROM contents_fts WHERE contents_fts MATCH ? LIMIT 100`)
@@ -143,6 +141,8 @@ export async function getContents(
     conditions.push(`c.id IN (${inClause})`)
     params.push(...ids)
   }
+
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
 
   return paginate<Content>(
     db,
