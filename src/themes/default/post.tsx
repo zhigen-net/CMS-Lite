@@ -39,7 +39,7 @@ function ProseWithForms({ html, forms, style }: { html: string; forms: Form[]; s
 }
 
 export default function DefaultPost({ post, settings, related = [], embeddedForms = [] }: Props) {
-  void settings
+  const showAiBadge = settings['site.showAiBadge'] !== false
   const readTime = post.content ? estimateReadingTime(post.content) : 0
   const date = post.published_at ? formatDate(post.published_at) : null
 
@@ -110,7 +110,7 @@ export default function DefaultPost({ post, settings, related = [], embeddedForm
                     onMouseLeave={e => ((e.currentTarget as HTMLElement).style.opacity = '1')}
                   >{cat.name}</Link>
                 ))}
-                {post.ai_generated && (
+                {showAiBadge && post.ai_generated && (
                   <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '0.25rem 0.625rem', borderRadius: '4px', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)', letterSpacing: '0.05em' }}>AI 生成</span>
                 )}
               </div>
@@ -196,7 +196,7 @@ export default function DefaultPost({ post, settings, related = [], embeddedForm
                   <div style={{ flex: 1, height: '1px', background: 'var(--color-border)' }} />
                 </div>
                 <div className="related-grid">
-                  {related.map(p => <PostCard key={p.id} post={p} />)}
+                  {related.map(p => <PostCard key={p.id} post={p} showAiBadge={showAiBadge} />)}
                 </div>
               </section>
             )}

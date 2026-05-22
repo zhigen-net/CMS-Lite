@@ -213,6 +213,31 @@ export default function SettingsClient({ initialSettings }: Props) {
               <p style={hintStyle}>影响 AI 生成内容和对话的语气风格</p>
             </div>
 
+            {divider}
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+              <div>
+                <label style={labelStyle}>显示 AI 生成标识</label>
+                <p style={hintStyle}>开启后，AI 生成的文章在前台列表和详情页会显示"AI"角标</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => update('site.showAiBadge', !settings['site.showAiBadge'])}
+                style={{
+                  flexShrink: 0, width: '40px', height: '22px', borderRadius: '11px', border: 'none',
+                  background: settings['site.showAiBadge'] ? '#18181b' : '#d4d4d8',
+                  cursor: 'pointer', position: 'relative', transition: 'background 0.2s',
+                }}
+              >
+                <span style={{
+                  position: 'absolute', top: '3px',
+                  left: settings['site.showAiBadge'] ? '21px' : '3px',
+                  width: '16px', height: '16px', borderRadius: '50%',
+                  background: '#fff', transition: 'left 0.2s',
+                }} />
+              </button>
+            </div>
+
           </div>
           <div style={{ padding: '16px 20px', borderTop: '1px solid #f4f4f5', display: 'flex', justifyContent: 'flex-end' }}>
             <button onClick={handleSave} disabled={saving} style={{

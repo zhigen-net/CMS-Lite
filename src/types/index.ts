@@ -203,6 +203,7 @@ export interface SiteSettings {
   'ai.seo.batchSize': number
   'ai.seo.priorityAI': boolean
   'ai.trigger.token': string
+  'site.showAiBadge': boolean
   'setup.completed': boolean
   // 存储驱动
   'storage.driver': 'r2' | 's3'
