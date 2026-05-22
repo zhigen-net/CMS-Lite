@@ -8,7 +8,7 @@ import {
   HomeIcon, FileTextIcon, FilesIcon, ImageIcon, BotIcon,
   PaletteIcon, SettingsIcon, ExternalLinkIcon,
   MenuIcon, XIcon, UsersIcon, UserIcon, KeyIcon, LogOutIcon,
-  FolderIcon, TagIcon, ClipboardIcon,
+  FolderIcon, TagIcon, ClipboardIcon, LayersIcon,
 } from '@/components/icons'
 
 type NavItem = { href: string; label: string; icon: React.FC<{ size?: number }>; exact?: boolean }
@@ -23,6 +23,7 @@ const NAV: NavEntry[] = [
     items: [
       { href: '/admin/post', label: '文章', icon: FileTextIcon },
       { href: '/admin/page', label: '页面', icon: FilesIcon },
+      { href: '/admin/content-types', label: '内容类型', icon: LayersIcon },
     ],
   },
   {
