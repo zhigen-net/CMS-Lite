@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
+import Link from 'next/link'
 import { PlusIcon, EditIcon, TrashIcon } from '@/components/icons'
 import type { ContentType, CustomFieldDef } from '@/types'
 
@@ -312,16 +313,25 @@ function TypeRow({ t, isLast, onEdit, onDelete, readonly }: {
           {(t.fields?.length ?? 0) > 0 && <span style={badge(true)}>{t.fields.length} 个自定义字段</span>}
         </div>
       </div>
-      {!readonly && (
-        <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-          <button onClick={onEdit} style={{ padding: '5px 8px', border: '1px solid #e4e4e7', borderRadius: '6px', background: '#fff', cursor: 'pointer', color: '#71717a', lineHeight: 0 }}>
-            <EditIcon size={13} />
-          </button>
-          <button onClick={onDelete} style={{ padding: '5px 8px', border: '1px solid #fecaca', borderRadius: '6px', background: '#fff', cursor: 'pointer', color: '#ef4444', lineHeight: 0 }}>
-            <TrashIcon size={13} />
-          </button>
-        </div>
-      )}
+      <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexShrink: 0 }}>
+        <Link href={`/admin/${t.slug}`} style={{
+          padding: '5px 10px', border: '1px solid #e4e4e7', borderRadius: '6px',
+          background: '#fff', fontSize: '12px', color: '#374151', textDecoration: 'none',
+          fontWeight: 500, whiteSpace: 'nowrap',
+        }}>
+          管理内容 →
+        </Link>
+        {!readonly && (
+          <>
+            <button onClick={onEdit} style={{ padding: '5px 8px', border: '1px solid #e4e4e7', borderRadius: '6px', background: '#fff', cursor: 'pointer', color: '#71717a', lineHeight: 0 }}>
+              <EditIcon size={13} />
+            </button>
+            <button onClick={onDelete} style={{ padding: '5px 8px', border: '1px solid #fecaca', borderRadius: '6px', background: '#fff', cursor: 'pointer', color: '#ef4444', lineHeight: 0 }}>
+              <TrashIcon size={13} />
+            </button>
+          </>
+        )}
+      </div>
     </div>
   )
 }
