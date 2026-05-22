@@ -1,5 +1,5 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
-import { getContent, updateContent, deleteContent, setContentTags, setContentCategories } from '@/lib/db'
+import { getContent, updateContent, deleteContent, setContentTags, setContentCategories, saveContentFields } from '@/lib/db'
 import { getCurrentUser, requireAdmin } from '@/lib/auth'
 
 
@@ -27,8 +27,10 @@ export async function PATCH(request: Request, { params }: Params) {
   // 提取关联数据，不传入 updateContent
   const tags = Array.isArray(body.tags) ? (body.tags as string[]) : null
   const categoryIds = Array.isArray(body.category_ids) ? (body.category_ids as string[]) : null
+  const fields = body.fields && typeof body.fields === 'object' ? body.fields as Record<string, unknown> : null
   delete body.tags
   delete body.category_ids
+  delete body.fields
 
   // 发布时自动设置 published_at
   if (body.status === 'published') {
@@ -45,6 +47,9 @@ export async function PATCH(request: Request, { params }: Params) {
   }
   if (tags !== null) {
     await setContentTags(env.DB, id, tags)
+  }
+  if (fields !== null) {
+    await saveContentFields(env.DB, id, fields)
   }
 
   return Response.json({ ok: true })

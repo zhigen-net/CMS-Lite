@@ -158,13 +158,13 @@ export async function getContents(
 export async function getContent(db: D1Database, id: string): Promise<Content | null> {
   const row = await db.prepare('SELECT * FROM contents WHERE id = ?').bind(id).first<Content>()
   if (!row) return null
-  return parseContent(row)
+  return attachContentFields(db, parseContent(row))
 }
 
 export async function getContentBySlug(db: D1Database, type: string, slug: string): Promise<Content | null> {
   const row = await db.prepare('SELECT * FROM contents WHERE type = ? AND slug = ?').bind(type, slug).first<Content>()
   if (!row) return null
-  return parseContent(row)
+  return attachContentFields(db, parseContent(row))
 }
 
 function parseContent(row: Content): Content {
@@ -172,6 +172,28 @@ function parseContent(row: Content): Content {
     ...row,
     ai_generated: Boolean(row.ai_generated),
     ai_reviewed: Boolean(row.ai_reviewed),
+  }
+}
+
+async function attachContentFields(db: D1Database, content: Content): Promise<Content> {
+  const rows = await db.prepare('SELECT field_key, field_value FROM content_fields WHERE content_id = ?')
+    .bind(content.id).all<{ field_key: string; field_value: string }>()
+  if (!rows.results.length) return content
+  const fields: Record<string, unknown> = {}
+  for (const r of rows.results) {
+    try { fields[r.field_key] = JSON.parse(r.field_value) } catch { fields[r.field_key] = r.field_value }
+  }
+  return { ...content, fields }
+}
+
+export async function saveContentFields(db: D1Database, contentId: string, fields: Record<string, unknown>): Promise<void> {
+  const entries = Object.entries(fields)
+  if (!entries.length) return
+  for (const [key, value] of entries) {
+    const serialized = JSON.stringify(value)
+    await db.prepare(
+      'INSERT INTO content_fields (id, content_id, field_key, field_value) VALUES (?, ?, ?, ?) ON CONFLICT(content_id, field_key) DO UPDATE SET field_value = excluded.field_value'
+    ).bind(`${contentId}_${key}`, contentId, key, serialized).run()
   }
 }
 
