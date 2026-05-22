@@ -137,16 +137,6 @@ export interface FormSubmission {
   created_at: number
 }
 
-export interface Plugin {
-  id: string
-  name: string
-  version: string
-  enabled: boolean
-  config: Record<string, unknown>
-  installed_at: number
-  updated_at: number
-}
-
 export interface AITask {
   id: string
   type: AITaskType

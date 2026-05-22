@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   HomeIcon, FileTextIcon, FilesIcon, ImageIcon, BotIcon,
-  PaletteIcon, PuzzleIcon, SettingsIcon, ExternalLinkIcon,
+  PaletteIcon, SettingsIcon, ExternalLinkIcon,
   MenuIcon, XIcon, UsersIcon, UserIcon, KeyIcon, LogOutIcon,
   FolderIcon, TagIcon, ClipboardIcon,
 } from '@/components/icons'
@@ -39,7 +39,6 @@ const NAV: NavEntry[] = [
     items: [
       { href: '/admin/users', label: '用户', icon: UsersIcon },
       { href: '/admin/appearance', label: '外观', icon: PaletteIcon },
-      { href: '/admin/plugins', label: '插件', icon: PuzzleIcon },
       { href: '/admin/settings', label: '设置', icon: SettingsIcon },
     ],
   },

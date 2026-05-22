@@ -1,4 +1,4 @@
-import type { Content, ContentType, Category, Tag, User, Media, Plugin, ListResult, AITask, AITaskType, AITaskStatus, Form, FormSubmission } from '@/types'
+import type { Content, ContentType, Category, Tag, User, Media, ListResult, AITask, AITaskType, AITaskStatus, Form, FormSubmission } from '@/types'
 
 export function getDB(env: CloudflareEnv): D1Database {
   return env.DB
@@ -589,25 +589,6 @@ export async function setSetting(db: D1Database, key: string, value: unknown): P
   await db.prepare(
     'INSERT INTO settings (key, value, updated_at) VALUES (?, ?, unixepoch()) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = unixepoch()'
   ).bind(key, JSON.stringify(value)).run()
-}
-
-// ── 插件 ────────────────────────────────────────────────────
-
-export async function getPlugins(db: D1Database): Promise<Plugin[]> {
-  const rows = await db.prepare('SELECT * FROM plugins ORDER BY installed_at').all<Record<string, unknown>>()
-  return rows.results.map(r => ({
-    id: r.id as string,
-    name: r.name as string,
-    version: r.version as string,
-    enabled: Boolean(r.enabled),
-    config: JSON.parse((r.config as string) || '{}'),
-    installed_at: r.installed_at as number,
-    updated_at: r.updated_at as number,
-  }))
-}
-
-export async function setPluginEnabled(db: D1Database, id: string, enabled: boolean): Promise<void> {
-  await db.prepare('UPDATE plugins SET enabled = ?, updated_at = unixepoch() WHERE id = ?').bind(enabled ? 1 : 0, id).run()
 }
 
 // ── 表单 ────────────────────────────────────────────────────
