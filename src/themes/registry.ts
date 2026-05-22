@@ -3,6 +3,7 @@ import type {
   ThemeLayoutProps, ThemeHomeProps, ThemePostProps, ThemePageProps,
   ThemeArchiveProps, ThemeAuthorProps, ThemeSearchProps,
 } from '@/types/theme'
+import type { CustomFieldDef } from '@/types'
 
 export interface ThemeMeta {
   id: string
@@ -13,6 +14,19 @@ export interface ThemeMeta {
   tags: string[]
   preview: string | null
   variables: Record<string, string>
+}
+
+/** Content type that a theme needs provisioned when activated */
+export interface ThemeContentTypeDef {
+  id: string
+  name: string
+  slug: string
+  icon: string
+  has_timeline?: boolean
+  has_author?: boolean
+  has_category?: boolean
+  has_tag?: boolean
+  fields: CustomFieldDef[]
 }
 
 export interface ThemeModule {
@@ -29,11 +43,16 @@ export interface ThemeModule {
 // ── Theme Registry ────────────────────────────────────────────────────────────
 // Adding a new theme requires only editing this file:
 //   1. Create src/themes/{id}/ with all required components
-//   2. Add one entry to REGISTRY below
+//   2. Add one entry to REGISTRY below (contentTypes is optional)
 
 import defaultConfig from '@/themes/default/theme.config'
+import fertilityConfig, { contentTypes as fertilityContentTypes } from '@/themes/fertility/theme.config'
 
-const REGISTRY: Array<{ meta: ThemeMeta; load: () => Promise<ThemeModule> }> = [
+const REGISTRY: Array<{
+  meta: ThemeMeta
+  contentTypes?: ThemeContentTypeDef[]
+  load: () => Promise<ThemeModule>
+}> = [
   {
     meta: {
       id: defaultConfig.id,
@@ -47,6 +66,20 @@ const REGISTRY: Array<{ meta: ThemeMeta; load: () => Promise<ThemeModule> }> = [
     },
     load: () => import('@/themes/default') as Promise<ThemeModule>,
   },
+  {
+    meta: {
+      id: fertilityConfig.id,
+      name: fertilityConfig.name,
+      version: fertilityConfig.version,
+      author: fertilityConfig.author,
+      variables: fertilityConfig.variables,
+      description: '专为生殖中心设计，温暖专业，支持医生、服务、患者故事等内容类型',
+      tags: ['医疗', '生殖中心', '专业'],
+      preview: null,
+    },
+    contentTypes: fertilityContentTypes,
+    load: () => import('@/themes/fertility') as Promise<ThemeModule>,
+  },
 ]
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -55,6 +88,10 @@ export const themes: ThemeMeta[] = REGISTRY.map(r => r.meta)
 
 export function getThemeById(id: string): ThemeMeta {
   return themes.find(t => t.id === id) ?? themes[0]
+}
+
+export function getThemeContentTypes(themeId: string): ThemeContentTypeDef[] {
+  return REGISTRY.find(r => r.meta.id === themeId)?.contentTypes ?? []
 }
 
 export async function loadTheme(themeId?: string | null): Promise<ThemeModule> {
