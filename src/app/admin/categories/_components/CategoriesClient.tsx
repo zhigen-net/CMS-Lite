@@ -6,9 +6,15 @@ import { PlusIcon, EditIcon, TrashIcon } from '@/components/icons'
 import type { CategoryWithCount } from '@/lib/db'
 import { TabBar } from '@/components/TabBar'
 
+interface TypeData {
+  id: string
+  name: string
+  icon: string
+  categories: CategoryWithCount[]
+}
+
 interface Props {
-  initialPost: CategoryWithCount[]
-  initialPage: CategoryWithCount[]
+  types: TypeData[]
 }
 
 const inp: React.CSSProperties = {
@@ -34,42 +40,41 @@ function ChevronDownIcon() {
   )
 }
 
-// Build display order: top-level cats in sort_order, each followed by their children
 function buildTree(cats: CategoryWithCount[]): { cat: CategoryWithCount; depth: number }[] {
   const roots = cats.filter(c => !c.parent_id).sort((a, b) => a.sort_order - b.sort_order)
   const result: { cat: CategoryWithCount; depth: number }[] = []
   for (const root of roots) {
     result.push({ cat: root, depth: 0 })
     const children = cats.filter(c => c.parent_id === root.id).sort((a, b) => a.sort_order - b.sort_order)
-    for (const child of children) {
-      result.push({ cat: child, depth: 1 })
-    }
+    for (const child of children) result.push({ cat: child, depth: 1 })
   }
-  // orphaned children (parent deleted) shown at end
-  const listedIds = new Set(result.map(r => r.cat.id))
-  cats.filter(c => !listedIds.has(c.id)).forEach(c => result.push({ cat: c, depth: 1 }))
+  const listed = new Set(result.map(r => r.cat.id))
+  cats.filter(c => !listed.has(c.id)).forEach(c => result.push({ cat: c, depth: 1 }))
   return result
 }
 
-export default function CategoriesClient({ initialPost, initialPage }: Props) {
-  const [tab, setTab] = useState<'post' | 'page'>('post')
-  const [postCats, setPostCats] = useState(initialPost)
-  const [pageCats, setPageCats] = useState(initialPage)
-  const [modal, setModal] = useState<ModalMode | null>(null)
-  const [delId, setDelId] = useState<string | null>(null)
-  const [name, setName] = useState('')
+export default function CategoriesClient({ types }: Props) {
+  const [activeId, setActiveId] = useState(types[0]?.id ?? '')
+  const [catsByType, setCatsByType] = useState<Record<string, CategoryWithCount[]>>(
+    () => Object.fromEntries(types.map(t => [t.id, t.categories]))
+  )
+  const [modal,      setModal]      = useState<ModalMode | null>(null)
+  const [delId,      setDelId]      = useState<string | null>(null)
+  const [name,       setName]       = useState('')
   const [description, setDescription] = useState('')
-  const [parentId, setParentId] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [parentId,   setParentId]   = useState('')
+  const [saving,     setSaving]     = useState(false)
   const [sortSaving, setSortSaving] = useState(false)
-  const [msg, setMsg] = useState('')
+  const [msg,        setMsg]        = useState('')
 
-  const cats = tab === 'post' ? postCats : pageCats
-  const setCats = tab === 'post' ? setPostCats : setPageCats
+  const activeType = types.find(t => t.id === activeId)
+  const cats       = catsByType[activeId] ?? []
 
-  const tree = buildTree(cats)
+  function setCats(updater: (prev: CategoryWithCount[]) => CategoryWithCount[]) {
+    setCatsByType(prev => ({ ...prev, [activeId]: updater(prev[activeId] ?? []) }))
+  }
 
-  // Only top-level cats available as parents (max 2 levels)
+  const tree     = buildTree(cats)
   const topLevel = cats.filter(c => !c.parent_id)
 
   function openCreate() {
@@ -93,7 +98,7 @@ export default function CategoriesClient({ initialPost, initialPage }: Props) {
         const res = await fetch('/api/categories', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, description, parent_id: parentId || null, content_type: tab }),
+          body: JSON.stringify({ name, description, parent_id: parentId || null, content_type: activeId }),
         })
         if (!res.ok) { setMsg('创建失败'); return }
         const cat = await res.json() as CategoryWithCount
@@ -119,28 +124,21 @@ export default function CategoriesClient({ initialPost, initialPage }: Props) {
         ))
       }
       setModal(null)
-    } finally {
-      setSaving(false)
-    }
+    } finally { setSaving(false) }
   }
 
   async function handleDelete(id: string) {
-    // also delete children
     const childIds = cats.filter(c => c.parent_id === id).map(c => c.id)
     await fetch(`/api/categories/${id}`, { method: 'DELETE' })
-    for (const cid of childIds) {
-      await fetch(`/api/categories/${cid}`, { method: 'DELETE' })
-    }
+    for (const cid of childIds) await fetch(`/api/categories/${cid}`, { method: 'DELETE' })
     setCats(prev => prev.filter(c => c.id !== id && c.parent_id !== id))
     setDelId(null)
   }
 
   async function moveItem(id: string, direction: 'up' | 'down') {
     const cat = cats.find(c => c.id === id)!
-    const siblings = cats
-      .filter(c => c.parent_id === cat.parent_id)
-      .sort((a, b) => a.sort_order - b.sort_order)
-    const idx = siblings.findIndex(c => c.id === id)
+    const siblings = cats.filter(c => c.parent_id === cat.parent_id).sort((a, b) => a.sort_order - b.sort_order)
+    const idx     = siblings.findIndex(c => c.id === id)
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1
     if (swapIdx < 0 || swapIdx >= siblings.length) return
 
@@ -160,13 +158,20 @@ export default function CategoriesClient({ initialPost, initialPage }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orders: updated.map(c => ({ id: c.id, sort_order: c.sort_order })) }),
       })
-    } finally {
-      setSortSaving(false)
-    }
+    } finally { setSortSaving(false) }
   }
 
-  const delTarget = delId ? cats.find(c => c.id === delId) : null
+  const delTarget  = delId ? cats.find(c => c.id === delId) : null
   const delChildren = delId ? cats.filter(c => c.parent_id === delId) : []
+
+  if (types.length === 0) {
+    return (
+      <div style={{ padding: '28px 32px', maxWidth: 860, margin: '0 auto', textAlign: 'center', color: '#a1a1aa', paddingTop: '80px' }}>
+        <p style={{ fontSize: '14px' }}>没有启用分类的内容类型</p>
+        <p style={{ fontSize: '12px', marginTop: '6px' }}>在内容类型设置中勾选「支持分类」即可</p>
+      </div>
+    )
+  }
 
   return (
     <div style={{ padding: '28px 32px 48px', maxWidth: 860, margin: '0 auto' }}>
@@ -174,7 +179,7 @@ export default function CategoriesClient({ initialPost, initialPage }: Props) {
         <div>
           <h1 style={{ fontSize: '18px', fontWeight: 600, color: '#18181b', letterSpacing: '-0.02em', margin: 0 }}>分类管理</h1>
           <p style={{ fontSize: '13px', color: '#71717a', margin: '4px 0 0' }}>
-            {cats.length} 个分类
+            {cats.length} 个{activeType?.name}分类
             {sortSaving && <span style={{ marginLeft: '8px', color: '#a1a1aa' }}>保存排序…</span>}
           </p>
         </div>
@@ -189,15 +194,15 @@ export default function CategoriesClient({ initialPost, initialPage }: Props) {
 
       <div style={{ marginBottom: '16px' }}>
         <TabBar
-          tabs={[{ key: 'post', label: '文章分类' }, { key: 'page', label: '页面分类' }]}
-          active={tab}
-          onChange={k => setTab(k as 'post' | 'page')}
+          tabs={types.map(t => ({ key: t.id, label: `${t.icon} ${t.name}` }))}
+          active={activeId}
+          onChange={k => setActiveId(k)}
         />
       </div>
 
       {tree.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: '#a1a1aa', border: '1px dashed #e4e4e7', borderRadius: '12px' }}>
-          <p style={{ fontSize: '14px', margin: 0 }}>还没有分类</p>
+          <p style={{ fontSize: '14px', margin: 0 }}>还没有{activeType?.name}分类</p>
           <p style={{ fontSize: '12px', marginTop: '6px' }}>点击「新建分类」开始</p>
         </div>
       ) : (
@@ -208,7 +213,7 @@ export default function CategoriesClient({ initialPost, initialPage }: Props) {
               .sort((a, b) => a.sort_order - b.sort_order)
             const sibIdx = siblings.findIndex(c => c.id === cat.id)
             const isFirst = sibIdx === 0
-            const isLast = sibIdx === siblings.length - 1
+            const isLast  = sibIdx === siblings.length - 1
 
             return (
               <div key={cat.id} style={{
@@ -217,7 +222,6 @@ export default function CategoriesClient({ initialPost, initialPage }: Props) {
                 borderBottom: i < tree.length - 1 ? '1px solid #f4f4f5' : 'none',
                 background: depth === 1 ? '#fafafa' : '#fff',
               }}>
-                {/* depth indent */}
                 {depth === 1 && (
                   <div style={{ width: '20px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', color: '#d4d4d8' }}>
                     <svg width="10" height="14" viewBox="0 0 10 14" fill="none">
@@ -226,7 +230,6 @@ export default function CategoriesClient({ initialPost, initialPage }: Props) {
                   </div>
                 )}
 
-                {/* Sort controls */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flexShrink: 0 }}>
                   <button onClick={() => moveItem(cat.id, 'up')} disabled={isFirst} title="上移" style={{
                     padding: '3px 4px', border: '1px solid #e4e4e7', borderRadius: '4px',
@@ -253,7 +256,7 @@ export default function CategoriesClient({ initialPost, initialPage }: Props) {
                       background: cat.count > 0 ? '#eef2ff' : '#f4f4f5',
                       padding: '1px 7px', borderRadius: '99px',
                     }}>
-                      {cat.count} 篇
+                      {cat.count} 条
                     </span>
                   </div>
                   <div style={{ fontSize: '12px', color: '#a1a1aa', marginTop: '2px' }}>
@@ -281,20 +284,19 @@ export default function CategoriesClient({ initialPost, initialPage }: Props) {
         </div>
       )}
 
-      {/* Create / Edit modal */}
       {modal && createPortal(
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
           onClick={e => { if (e.target === e.currentTarget) setModal(null) }}>
           <div style={{ background: '#fff', borderRadius: '14px', padding: '24px', width: '100%', maxWidth: '420px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}
             onClick={e => e.stopPropagation()}>
             <h2 style={{ fontSize: '15px', fontWeight: 600, color: '#18181b', margin: '0 0 18px' }}>
-              {modal.type === 'create' ? '新建分类' : '编辑分类'}
+              {modal.type === 'create' ? `新建${activeType?.name}分类` : '编辑分类'}
             </h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
                 <label style={{ fontSize: '12px', fontWeight: 500, color: '#374151', display: 'block', marginBottom: '5px' }}>名称 *</label>
                 <input value={name} onChange={e => setName(e.target.value)} style={inp} placeholder="分类名称"
-                  onKeyDown={e => e.key === 'Enter' && handleSave()} />
+                  onKeyDown={e => e.key === 'Enter' && handleSave()} autoFocus />
               </div>
               <div>
                 <label style={{ fontSize: '12px', fontWeight: 500, color: '#374151', display: 'block', marginBottom: '5px' }}>描述</label>
@@ -306,9 +308,7 @@ export default function CategoriesClient({ initialPost, initialPage }: Props) {
                   <option value="">无（顶级）</option>
                   {topLevel
                     .filter(c => modal.type === 'edit' ? c.id !== modal.item.id : true)
-                    .map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
+                    .map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
                 <p style={{ fontSize: '11px', color: '#a1a1aa', marginTop: '4px' }}>最多支持两级层级</p>
               </div>
@@ -325,14 +325,13 @@ export default function CategoriesClient({ initialPost, initialPage }: Props) {
         document.body
       )}
 
-      {/* Delete confirm */}
       {delId && createPortal(
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
           onClick={e => { if (e.target === e.currentTarget) setDelId(null) }}>
           <div style={{ background: '#fff', borderRadius: '14px', padding: '24px', width: '100%', maxWidth: '360px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
             <h2 style={{ fontSize: '15px', fontWeight: 600, color: '#18181b', margin: '0 0 8px' }}>删除分类</h2>
             <p style={{ fontSize: '13px', color: '#71717a', margin: '0 0 4px' }}>
-              删除后文章的分类关联也会移除，不可恢复。
+              删除后内容的分类关联也会移除，不可恢复。
             </p>
             {delChildren.length > 0 && (
               <p style={{ fontSize: '13px', color: '#ef4444', margin: '0 0 16px' }}>
@@ -342,7 +341,7 @@ export default function CategoriesClient({ initialPost, initialPage }: Props) {
             {!delChildren.length && <div style={{ marginBottom: '16px' }} />}
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
               <button onClick={() => setDelId(null)} style={{ padding: '7px 16px', borderRadius: '7px', border: '1px solid #e4e4e7', background: '#fff', fontSize: '13px', cursor: 'pointer', color: '#374151' }}>取消</button>
-              <button onClick={() => handleDelete(delId)} style={{ padding: '7px 16px', borderRadius: '7px', border: 'none', background: '#ef4444', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>
+              <button onClick={() => handleDelete(delId!)} style={{ padding: '7px 16px', borderRadius: '7px', border: 'none', background: '#ef4444', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>
                 删除{delChildren.length > 0 ? `（含 ${delChildren.length} 个子分类）` : ''}
               </button>
             </div>
