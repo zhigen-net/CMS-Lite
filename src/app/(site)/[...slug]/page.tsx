@@ -26,12 +26,12 @@ function buildMarked() {
 }
 
 interface Props {
-  params: Promise<{ slug?: string[] }>
+  params: Promise<{ slug: string[] }>
   searchParams: Promise<{ page?: string }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug: segments = [] } = await params
+  const { slug: segments } = await params
   const { env } = getCloudflareContext()
 
   if (segments.length === 1) {
@@ -59,7 +59,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function SlugPage({ params }: Props) {
-  const { slug: segments = [] } = await params
+  const { slug: segments } = await params
   if (segments.length === 0 || segments.length > 2) notFound()
 
   const { env } = getCloudflareContext()
