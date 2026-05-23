@@ -97,6 +97,12 @@ jobs:
 
       - name: Deploy
         run: |
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          COMMIT_MSG=$(git log -1 --pretty=%s | LC_ALL=C tr -cd '[:print:]' | cut -c1-100)
+          [ -z "$COMMIT_MSG" ] && COMMIT_MSG="Deploy $COMMIT_HASH"
           npx wrangler pages deploy dist \
             --project-name="$PROJECT_NAME" \
-            --branch main
+            --branch main \
+            --commit-dirty=true \
+            --commit-hash="$COMMIT_HASH" \
+            --commit-message="$COMMIT_MSG"
