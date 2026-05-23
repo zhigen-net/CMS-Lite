@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import type { ThemeArchiveProps } from '@/types/theme'
 import type { Category } from '@/types'
