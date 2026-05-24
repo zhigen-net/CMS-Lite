@@ -3,7 +3,7 @@ import type {
   ThemeLayoutProps, ThemeHomeProps, ThemePostProps, ThemePageProps,
   ThemeArchiveProps, ThemeAuthorProps, ThemeSearchProps, ThemeLinksProps,
 } from '@/types/theme'
-import type { CustomFieldDef } from '@/types'
+import type { CustomFieldDef, NavItem } from '@/types'
 
 export interface ThemeMeta {
   id: string
@@ -47,11 +47,12 @@ export interface ThemeModule {
 //   2. Add one entry to REGISTRY below (contentTypes is optional)
 
 import defaultConfig from '@/themes/default/theme.config'
-import fertilityConfig, { contentTypes as fertilityContentTypes } from '@/themes/fertility/theme.config'
+import fertilityConfig, { contentTypes as fertilityContentTypes, defaultNav as fertilityDefaultNav } from '@/themes/fertility/theme.config'
 
 const REGISTRY: Array<{
   meta: ThemeMeta
   contentTypes?: ThemeContentTypeDef[]
+  defaultNav?: NavItem[]
   load: () => Promise<ThemeModule>
 }> = [
   {
@@ -79,6 +80,7 @@ const REGISTRY: Array<{
       preview: null,
     },
     contentTypes: fertilityContentTypes,
+    defaultNav: fertilityDefaultNav,
     load: () => import('@/themes/fertility') as Promise<ThemeModule>,
   },
 ]
@@ -93,6 +95,10 @@ export function getThemeById(id: string): ThemeMeta {
 
 export function getThemeContentTypes(themeId: string): ThemeContentTypeDef[] {
   return REGISTRY.find(r => r.meta.id === themeId)?.contentTypes ?? []
+}
+
+export function getThemeDefaultNav(themeId: string): NavItem[] {
+  return REGISTRY.find(r => r.meta.id === themeId)?.defaultNav ?? []
 }
 
 export async function loadTheme(themeId?: string | null): Promise<ThemeModule> {

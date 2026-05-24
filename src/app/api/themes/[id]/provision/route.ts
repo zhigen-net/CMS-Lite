@@ -1,7 +1,7 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getCurrentUser, requireAdmin } from '@/lib/auth'
-import { getThemeContentTypes } from '@/themes/registry'
-import { getContentType, createContentType } from '@/lib/db'
+import { getThemeContentTypes, getThemeDefaultNav } from '@/themes/registry'
+import { getContentType, createContentType, getSettings, setSetting } from '@/lib/db'
 
 interface Params { params: Promise<{ id: string }> }
 
@@ -16,8 +16,6 @@ export async function POST(request: Request, { params }: Params) {
   if (authError) return authError
 
   const contentTypes = getThemeContentTypes(themeId)
-  if (!contentTypes.length) return Response.json({ created: [] })
-
   const created: string[] = []
 
   for (const def of contentTypes) {
@@ -36,6 +34,15 @@ export async function POST(request: Request, { params }: Params) {
       fields: def.fields,
     })
     created.push(def.id)
+  }
+
+  // Seed default nav if the theme provides one and nav.main is not yet configured
+  const defaultNav = getThemeDefaultNav(themeId)
+  if (defaultNav.length) {
+    const existing = await getSettings(env.DB, ['nav.main'])
+    if (!existing['nav.main'] || (existing['nav.main'] as unknown[]).length === 0) {
+      await setSetting(env.DB, 'nav.main', defaultNav)
+    }
   }
 
   return Response.json({ created })

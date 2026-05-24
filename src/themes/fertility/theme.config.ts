@@ -1,4 +1,5 @@
 import type { ThemeContentTypeDef } from '@/themes/registry'
+import type { NavItem } from '@/types'
 
 const themeConfig = {
   id: 'fertility',
@@ -75,6 +76,12 @@ export const contentTypes: ThemeContentTypeDef[] = [
       { key: 'featured', label: '首页展示', type: 'boolean', default: false },
     ],
   },
+]
+
+export const defaultNav: NavItem[] = [
+  { id: 'nav-service',     label: '诊疗服务', url: '/service'     },
+  { id: 'nav-doctor',      label: '医生团队', url: '/doctor'      },
+  { id: 'nav-testimonial', label: '患者故事', url: '/testimonial' },
 ]
 
 export default themeConfig
