@@ -1,4 +1,4 @@
-import type { ThemeContentTypeDef } from '@/themes/registry'
+import type { ThemeContentTypeDef, ThemeDefaultPageDef } from '@/themes/registry'
 import type { NavItem } from '@/types'
 
 const themeConfig = {
@@ -75,6 +75,15 @@ export const contentTypes: ThemeContentTypeDef[] = [
       { key: 'rating', label: '满意度', type: 'select', options: ['五星', '四星', '三星'] },
       { key: 'featured', label: '首页展示', type: 'boolean', default: false },
     ],
+  },
+]
+
+export const defaultPages: ThemeDefaultPageDef[] = [
+  {
+    slug: 'contact',
+    title: '预约咨询',
+    excerpt: '填写以下信息，我们的医疗顾问将尽快与您联系，为您安排专属诊疗方案。',
+    content: '<p>请在此处嵌入预约表单，或补充联系方式、门诊地址等信息。</p>',
   },
 ]
 

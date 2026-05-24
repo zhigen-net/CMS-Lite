@@ -16,6 +16,14 @@ export interface ThemeMeta {
   variables: Record<string, string>
 }
 
+/** Page that a theme wants pre-created when activated */
+export interface ThemeDefaultPageDef {
+  slug: string
+  title: string
+  excerpt?: string
+  content?: string
+}
+
 /** Content type that a theme needs provisioned when activated */
 export interface ThemeContentTypeDef {
   id: string
@@ -47,12 +55,13 @@ export interface ThemeModule {
 //   2. Add one entry to REGISTRY below (contentTypes is optional)
 
 import defaultConfig from '@/themes/default/theme.config'
-import fertilityConfig, { contentTypes as fertilityContentTypes, defaultNav as fertilityDefaultNav } from '@/themes/fertility/theme.config'
+import fertilityConfig, { contentTypes as fertilityContentTypes, defaultNav as fertilityDefaultNav, defaultPages as fertilityDefaultPages } from '@/themes/fertility/theme.config'
 
 const REGISTRY: Array<{
   meta: ThemeMeta
   contentTypes?: ThemeContentTypeDef[]
   defaultNav?: NavItem[]
+  defaultPages?: ThemeDefaultPageDef[]
   load: () => Promise<ThemeModule>
 }> = [
   {
@@ -81,6 +90,7 @@ const REGISTRY: Array<{
     },
     contentTypes: fertilityContentTypes,
     defaultNav: fertilityDefaultNav,
+    defaultPages: fertilityDefaultPages,
     load: () => import('@/themes/fertility') as Promise<ThemeModule>,
   },
 ]
@@ -99,6 +109,10 @@ export function getThemeContentTypes(themeId: string): ThemeContentTypeDef[] {
 
 export function getThemeDefaultNav(themeId: string): NavItem[] {
   return REGISTRY.find(r => r.meta.id === themeId)?.defaultNav ?? []
+}
+
+export function getThemeDefaultPages(themeId: string): ThemeDefaultPageDef[] {
+  return REGISTRY.find(r => r.meta.id === themeId)?.defaultPages ?? []
 }
 
 export async function loadTheme(themeId?: string | null): Promise<ThemeModule> {

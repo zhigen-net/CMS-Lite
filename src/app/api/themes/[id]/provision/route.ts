@@ -1,7 +1,8 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getCurrentUser, requireAdmin } from '@/lib/auth'
-import { getThemeContentTypes, getThemeDefaultNav } from '@/themes/registry'
-import { getContentType, createContentType, getSettings, setSetting } from '@/lib/db'
+import { getThemeContentTypes, getThemeDefaultNav, getThemeDefaultPages } from '@/themes/registry'
+import { getContentType, createContentType, getContentBySlug, createContent, getSettings, setSetting } from '@/lib/db'
+import { generateId } from '@/lib/utils'
 
 interface Params { params: Promise<{ id: string }> }
 
@@ -45,5 +46,34 @@ export async function POST(request: Request, { params }: Params) {
     }
   }
 
-  return Response.json({ created })
+  // Seed default pages declared by the theme (idempotent: skips existing slugs)
+  const defaultPages = getThemeDefaultPages(themeId)
+  const createdPages: string[] = []
+  for (const def of defaultPages) {
+    const existing = await getContentBySlug(env.DB, 'page', def.slug)
+    if (existing) continue
+    await createContent(env.DB, {
+      id: generateId(),
+      type: 'page',
+      title: def.title,
+      slug: def.slug,
+      excerpt: def.excerpt ?? null,
+      content: def.content ?? null,
+      status: 'published',
+      author_id: null,
+      cover_image: null,
+      published_at: Math.floor(Date.now() / 1000),
+      scheduled_at: null,
+      meta_title: null,
+      meta_description: null,
+      og_image: null,
+      ai_generated: false,
+      ai_reviewed: false,
+      parent_id: null,
+      sort_order: 0,
+    })
+    createdPages.push(def.slug)
+  }
+
+  return Response.json({ created, createdPages })
 }
