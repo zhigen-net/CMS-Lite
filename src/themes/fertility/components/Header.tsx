@@ -9,7 +9,12 @@ interface Props { settings: Partial<SiteSettings> }
 export default function FertilityHeader({ settings }: Props) {
   const siteName = (settings['site.name'] as string) || '生殖中心'
   const siteLogo = settings['site.logo'] as string | null
-  const navItems = (settings['nav.main'] as NavItem[]) || []
+  const configured = (settings['nav.main'] as NavItem[]) || []
+  const navItems = configured.length > 0 ? configured : [
+    { id: 'default-1', label: '诊疗服务', url: '/service',     target: '' },
+    { id: 'default-2', label: '医生团队', url: '/doctor',      target: '' },
+    { id: 'default-3', label: '患者故事', url: '/testimonial', target: '' },
+  ] as NavItem[]
 
   const [scrolled, setScrolled]     = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
