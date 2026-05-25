@@ -58,11 +58,11 @@ const SIDEBAR_W = 210
 
 interface Me { id: string; name: string; email: string; role: string }
 
-function UserMenu() {
+function UserMenu({ compact = false }: { compact?: boolean }) {
   const router = useRouter()
   const [me,      setMe]      = useState<Me | null>(null)
   const [open,    setOpen]    = useState(false)
-  const [dropPos, setDropPos] = useState({ top: 0, left: 0, width: 0 })
+  const [dropPos, setDropPos] = useState({ top: 0, left: 0, bottom: 0, right: 0, width: 0 })
   const btnRef  = useRef<HTMLButtonElement>(null)
   const dropRef = useRef<HTMLDivElement>(null)
 
@@ -85,7 +85,7 @@ function UserMenu() {
   const toggleOpen = useCallback(() => {
     if (!open && btnRef.current) {
       const r = btnRef.current.getBoundingClientRect()
-      setDropPos({ top: r.top, left: r.left, width: r.width })
+      setDropPos({ top: r.top, left: r.left, bottom: r.bottom, right: window.innerWidth - r.right, width: r.width })
     }
     setOpen(o => !o)
   }, [open])
@@ -105,20 +105,33 @@ function UserMenu() {
     { icon: KeyIcon,  label: 'API 管理', href: '/admin/account?tab=apikeys'  },
   ]
 
+  const dropdownStyle: React.CSSProperties = compact ? {
+    position: 'fixed',
+    top: dropPos.bottom + 6,
+    right: dropPos.right,
+    width: 180,
+    background: color.surface,
+    border: `1px solid ${color.border}`,
+    borderRadius: radius.xl,
+    boxShadow: shadow.lg,
+    padding: '4px',
+    zIndex: 9999,
+  } : {
+    position: 'fixed',
+    left: dropPos.left,
+    top: dropPos.top - 8,
+    width: dropPos.width,
+    transform: 'translateY(-100%)',
+    background: color.surface,
+    border: `1px solid ${color.border}`,
+    borderRadius: radius.xl,
+    boxShadow: shadow.lg,
+    padding: '4px',
+    zIndex: 9999,
+  }
+
   const dropdownEl = open ? createPortal(
-    <div ref={dropRef} style={{
-      position: 'fixed',
-      left: dropPos.left,
-      top:  dropPos.top - 8,
-      width: dropPos.width,
-      transform: 'translateY(-100%)',
-      background: color.surface,
-      border: `1px solid ${color.border}`,
-      borderRadius: radius.xl,
-      boxShadow: shadow.lg,
-      padding: '4px',
-      zIndex: 9999,
-    }}>
+    <div ref={dropRef} style={dropdownStyle}>
       {MENU_ITEMS.map(({ icon: Icon, label, href }) => (
         <a key={label} href={href} style={{
           width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
@@ -149,6 +162,29 @@ function UserMenu() {
     </div>,
     document.body
   ) : null
+
+  if (compact) {
+    return (
+      <>
+        <button ref={btnRef} onClick={toggleOpen} style={{
+          width: '32px', height: '32px', borderRadius: radius.lg,
+          background: open ? color.brand : color.muted,
+          border: 'none', cursor: 'pointer', padding: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: open ? '#fff' : color.brand,
+          fontSize: fontSize.sm, fontWeight: 700,
+          transition: `background ${transition.fast}, color ${transition.fast}`,
+          fontFamily: 'inherit',
+        }}
+          onMouseEnter={e => { if (!open) { (e.currentTarget as HTMLElement).style.background = color.brand; (e.currentTarget as HTMLElement).style.color = '#fff' } }}
+          onMouseLeave={e => { if (!open) { (e.currentTarget as HTMLElement).style.background = color.muted; (e.currentTarget as HTMLElement).style.color = color.brand } }}
+        >
+          {initials}
+        </button>
+        {dropdownEl}
+      </>
+    )
+  }
 
   return (
     <>
@@ -376,6 +412,9 @@ export default function AdminShell({ children, customTypes = [] }: { children: R
             {open ? <XIcon size={18} /> : <MenuIcon size={18} />}
           </button>
           <span style={{ fontSize: fontSize.base, fontWeight: 600, color: color.textPrimary }}>AI CMS</span>
+          <div style={{ marginLeft: 'auto' }}>
+            <UserMenu compact />
+          </div>
         </header>
 
         <main style={{ flex: 1 }}>

@@ -362,13 +362,17 @@ export async function setContentTags(db: D1Database, contentId: string, tagNames
   for (const name of tagNames) {
     const trimmed = name.trim()
     if (!trimmed) continue
-    const existing = await db.prepare('SELECT id FROM tags WHERE name = ?').bind(trimmed).first<{ id: string }>()
-    const tagId = existing?.id ?? crypto.randomUUID().replace(/-/g, '')
-    const slug = trimmed.toLowerCase().replace(/\s+/g, '-').replace(/[^\x00-\x7F]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '') || tagId
-    if (!existing) {
+    let tagRow = await db.prepare('SELECT id FROM tags WHERE name = ?').bind(trimmed).first<{ id: string }>()
+    if (!tagRow) {
+      const tagId = crypto.randomUUID().replace(/-/g, '')
+      const rawSlug = trimmed.toLowerCase().replace(/\s+/g, '-').replace(/[^\x00-\x7F]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '')
+      // If rawSlug collides with an existing tag's slug, fall back to tagId to avoid INSERT OR IGNORE silently failing
+      const slugTaken = rawSlug ? !!(await db.prepare('SELECT 1 FROM tags WHERE slug = ?').bind(rawSlug).first()) : false
+      const slug = rawSlug && !slugTaken ? rawSlug : tagId
       await db.prepare('INSERT OR IGNORE INTO tags (id, name, slug) VALUES (?, ?, ?)').bind(tagId, trimmed, slug).run()
+      tagRow = { id: tagId }
     }
-    await db.prepare('INSERT OR IGNORE INTO content_tags (content_id, tag_id) VALUES (?, ?)').bind(contentId, tagId).run()
+    await db.prepare('INSERT OR IGNORE INTO content_tags (content_id, tag_id) VALUES (?, ?)').bind(contentId, tagRow.id).run()
   }
 }
 
