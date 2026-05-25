@@ -47,7 +47,7 @@ const NAV: NavEntry[] = [
 
 const s = {
   sidebar: {
-    width: 210,
+    width: 236,
     bg: '#fff',
     border: '#ebebeb',
     text: '#6b7280',
@@ -56,7 +56,7 @@ const s = {
     bgHover: '#f9fafb',
     brand: '#111827',
   },
-  main: { bg: '#f5f5f5' },
+  main: { bg: '#f5f5f5', contentMax: 1280 },
 }
 
 interface Me { id: string; name: string; email: string; role: string }
@@ -251,7 +251,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         </div>
 
         {/* Nav */}
-        <nav style={{ flex: 1, padding: '4px 8px 8px', overflowY: 'auto' }}>
+        <nav style={{ flex: 1, padding: '8px 10px 12px', overflowY: 'auto' }}>
           {NAV.map((entry, idx) => {
             if ('group' in entry) {
               const isCollapsed = collapsed[entry.group] ?? false
@@ -286,14 +286,14 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                       const active = pathname === href || pathname.startsWith(href + '/')
                       return (
                         <Link key={href} href={href} className={active ? '' : 'adm-nav-item'} style={{
-                          display: 'flex', alignItems: 'center', gap: '8px',
-                          padding: '6px 8px', borderRadius: '7px', marginBottom: '1px',
+                          display: 'flex', alignItems: 'center', gap: '10px',
+                          padding: '7px 10px', borderRadius: '7px', marginBottom: '1px',
                           textDecoration: 'none', fontSize: '13.5px', fontWeight: active ? 500 : 400,
                           color: active ? s.sidebar.textActive : s.sidebar.text,
                           background: active ? s.sidebar.bgActive : 'transparent',
                           transition: 'background 0.12s, color 0.12s',
                         }}>
-                          <span style={{ lineHeight: 0, color: active ? '#374151' : '#9ca3af' }}><Icon size={15} /></span>
+                          <span style={{ width: 20, height: 20, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 0, color: active ? '#374151' : '#9ca3af', background: active ? '#e5e7eb' : 'transparent' }}><Icon size={14} /></span>
                           {label}
                         </Link>
                       )
@@ -306,14 +306,14 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             const active = exact ? pathname === href : pathname === href || pathname.startsWith(href + '/')
             return (
               <Link key={href} href={href} className={active ? '' : 'adm-nav-item'} style={{
-                display: 'flex', alignItems: 'center', gap: '8px',
-                padding: '6px 8px', borderRadius: '7px', marginBottom: '1px',
+                display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '7px 10px', borderRadius: '7px', marginBottom: '1px',
                 textDecoration: 'none', fontSize: '13.5px', fontWeight: active ? 500 : 400,
                 color: active ? s.sidebar.textActive : s.sidebar.text,
                 background: active ? s.sidebar.bgActive : 'transparent',
                 transition: 'background 0.12s, color 0.12s',
               }}>
-                <span style={{ lineHeight: 0, color: active ? '#374151' : '#9ca3af' }}><Icon size={15} /></span>
+                <span style={{ width: 20, height: 20, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 0, color: active ? '#374151' : '#9ca3af', background: active ? '#e5e7eb' : 'transparent' }}><Icon size={14} /></span>
                 {label}
               </Link>
             )
@@ -356,8 +356,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           <span style={{ fontSize: '13px', fontWeight: 600, color: '#18181b' }}>AI CMS</span>
         </header>
 
-        <main style={{ flex: 1 }}>
-          {children}
+        <main style={{ flex: 1, minWidth: 0, width: '100%' }}>
+          <div style={{ maxWidth: s.main.contentMax, margin: '0 auto', width: '100%' }}>
+            {children}
+          </div>
         </main>
       </div>
     </div>

@@ -41,7 +41,7 @@ export default async function AdminDashboard() {
   ]
 
   return (
-    <div style={{ padding: '28px 32px 48px', maxWidth: 860, margin: '0 auto' }}>
+    <div style={{ padding: '28px 32px 48px', maxWidth: 1160, margin: '0 auto' }}>
       <div style={{ marginBottom: '28px' }}>
         <h1 style={{ fontSize: '18px', fontWeight: 600, color: '#18181b', letterSpacing: '-0.02em', margin: 0 }}>
           概览
