@@ -66,6 +66,23 @@ jobs:
             && echo "R2 bucket created: $BUCKET_NAME" \
             || echo "R2 bucket may already exist, continuing..."
 
+      - name: Ensure Cloudflare Pages project exists
+        run: |
+          npx wrangler pages project create "$PROJECT_NAME" --production-branch main \
+            && echo "Pages project created: $PROJECT_NAME" \
+            || echo "Pages project may already exist, continuing..."
+
+          PAGE_CHECK=$(curl -sf \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PROJECT_NAME" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" | jq -r '.success')
+          if [ "$PAGE_CHECK" != "true" ]; then
+            echo "❌ Pages project '$PROJECT_NAME' is not accessible under this account."
+            echo "   The name may be taken by another Cloudflare account."
+            echo "   Please set a CMS_PROJECT_NAME secret with a unique name."
+            exit 1
+          fi
+          echo "✅ Pages project verified: $PROJECT_NAME"
+
       - name: Patch wrangler.toml
         run: |
           sed -i "s/YOUR_D1_DATABASE_ID/$DB_ID/" wrangler.toml
@@ -107,4 +124,5 @@ jobs:
         run: |
           npx wrangler pages deploy dist \
             --project-name="$PROJECT_NAME" \
-            --branch main
+            --branch main \
+            --commit-dirty=true
