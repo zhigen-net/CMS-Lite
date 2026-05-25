@@ -43,15 +43,28 @@ jobs:
           echo "BUCKET_NAME=$PROJECT-media" >> $GITHUB_ENV
           echo "→ Project name: $PROJECT"
 
-      - name: Get D1 database ID
+      - name: Ensure D1 database exists
         run: |
           DB_LIST=$(npx wrangler d1 list --json)
           DB_ID=$(echo "$DB_LIST" | jq -r --arg name "$DB_NAME" '.[] | select(.name==$name) | .uuid')
           if [ -z "$DB_ID" ]; then
-            echo "❌ Database $DB_NAME not found. Please run the Setup workflow first."
+            echo "⚠️ Database $DB_NAME not found. Creating it now..."
+            npx wrangler d1 create "$DB_NAME" 2>&1 || true
+            DB_LIST=$(npx wrangler d1 list --json)
+            DB_ID=$(echo "$DB_LIST" | jq -r --arg name "$DB_NAME" '.[] | select(.name==$name) | .uuid')
+          fi
+          if [ -z "$DB_ID" ]; then
+            echo "❌ Failed to create or find database: $DB_NAME"
             exit 1
           fi
           echo "DB_ID=$DB_ID" >> $GITHUB_ENV
+          echo "✅ Database ready: $DB_NAME ($DB_ID)"
+
+      - name: Ensure R2 bucket exists
+        run: |
+          npx wrangler r2 bucket create "$BUCKET_NAME" \
+            && echo "R2 bucket created: $BUCKET_NAME" \
+            || echo "R2 bucket may already exist, continuing..."
 
       - name: Patch wrangler.toml
         run: |
