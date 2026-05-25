@@ -17,9 +17,16 @@ type NavItem  = { href: string; label: string; icon: React.FC<{ size?: number }>
 type NavGroup = { group: string; items: NavItem[] }
 type NavEntry = NavItem | NavGroup
 
-function makeEmojiIcon(emoji: string): React.FC<{ size?: number }> {
-  return function EmojiIcon() {
-    return <span style={{ fontSize: '14px', lineHeight: 0 }}>{emoji}</span>
+function makeMonogramIcon(icon: string): React.FC<{ size?: number }> {
+  const char = icon.replace(/[️‍]/g, '').slice(0, 1)
+  return function MonogramIcon({ size = 16 }) {
+    return (
+      <span style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        width: size, height: size, fontSize: Math.round(size * 0.85) + 'px',
+        fontWeight: 700, lineHeight: 1, flexShrink: 0,
+      }}>{char}</span>
+    )
   }
 }
 
@@ -54,7 +61,7 @@ const NAV: NavEntry[] = [
   },
 ]
 
-const SIDEBAR_W = 210
+const SIDEBAR_W = 232
 
 interface Me { id: string; name: string; email: string; role: string }
 
@@ -233,28 +240,13 @@ export default function AdminShell({ children, customTypes = [] }: { children: R
           ...customTypes.map(ct => ({
             href: `/admin/${ct.slug}`,
             label: ct.name,
-            icon: makeEmojiIcon(ct.icon),
+            icon: makeMonogramIcon(ct.icon),
           })),
         ],
       }
     }
     return entry
   })
-
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
-    const result: Record<string, boolean> = {}
-    for (const entry of fullNav) {
-      if ('group' in entry) {
-        const hasActive = entry.items.some(item => pathname === item.href || pathname.startsWith(item.href + '/'))
-        result[entry.group] = !hasActive
-      }
-    }
-    return result
-  })
-
-  function toggleGroup(group: string) {
-    setCollapsed(prev => ({ ...prev, [group]: !prev[group] }))
-  }
 
   useEffect(() => { setOpen(false) }, [pathname])
 
@@ -283,7 +275,6 @@ export default function AdminShell({ children, customTypes = [] }: { children: R
           .adm-sidebar { position: fixed !important; z-index: 50; height: 100vh !important; box-shadow: 4px 0 32px rgba(0,0,0,0.25); }
         }
         .adm-nav-item:hover { background: ${color.sidebar.bgHover} !important; color: ${color.sidebar.textActive} !important; }
-        .adm-group-btn:hover { background: ${color.sidebar.bgHover} !important; color: #374151 !important; }
       `}</style>
 
       {open && (
@@ -317,49 +308,33 @@ export default function AdminShell({ children, customTypes = [] }: { children: R
         </div>
 
         {/* Nav */}
-        <nav style={{ flex: 1, padding: '4px 8px 8px', overflowY: 'auto' }}>
+        <nav style={{ flex: 1, padding: '6px 8px 8px', overflowY: 'auto' }}>
           {fullNav.map((entry, idx) => {
             if ('group' in entry) {
-              const isCollapsed = collapsed[entry.group] ?? false
-              const hasActive   = entry.items.some(item => pathname === item.href || pathname.startsWith(item.href + '/'))
               return (
-                <div key={entry.group} style={{ marginTop: idx === 0 ? 0 : '2px' }}>
-                  <button
-                    className="adm-group-btn"
-                    onClick={() => toggleGroup(entry.group)}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      width: '100%', padding: '6px 8px', border: 'none', borderRadius: radius.md,
-                      background: 'transparent', cursor: 'pointer', fontFamily: 'inherit',
-                      color: hasActive ? '#374151' : color.textMuted,
-                      transition: `background ${transition.fast}, color ${transition.fast}`,
-                    }}
-                  >
-                    <span style={{ fontSize: fontSize.xs, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                      {entry.group}
-                    </span>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                      style={{ transition: `transform ${transition.base}`, transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', flexShrink: 0, opacity: 0.5 }}>
-                      <polyline points="6 9 12 15 18 9" />
-                    </svg>
-                  </button>
+                <div key={entry.group} style={{ marginTop: idx === 0 ? '2px' : '10px' }}>
+                  {/* Section label — not a button, purely visual */}
                   <div style={{
-                    overflow: 'hidden',
-                    maxHeight: isCollapsed ? 0 : `${entry.items.length * 34}px`,
-                    transition: `max-height ${transition.slow}`,
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    padding: '0 8px', marginBottom: '3px',
                   }}>
-                    {entry.items.map(({ href, label, icon: Icon }) => {
-                      const active = pathname === href || pathname.startsWith(href + '/')
-                      return (
-                        <Link key={href} href={href} className={active ? '' : 'adm-nav-item'} style={navItemStyle(active)}>
-                          <span style={{ lineHeight: 0, color: active ? color.sidebar.iconActive : color.sidebar.iconInactive }}>
-                            <Icon size={15} />
-                          </span>
-                          {label}
-                        </Link>
-                      )
-                    })}
+                    <span style={{
+                      fontSize: fontSize.xs, fontWeight: 600, letterSpacing: '0.05em',
+                      textTransform: 'uppercase', color: color.textMuted, whiteSpace: 'nowrap',
+                    }}>{entry.group}</span>
+                    <div style={{ flex: 1, height: '1px', background: color.borderSubtle }} />
                   </div>
+                  {entry.items.map(({ href, label, icon: Icon }) => {
+                    const active = pathname === href || pathname.startsWith(href + '/')
+                    return (
+                      <Link key={href} href={href} className={active ? '' : 'adm-nav-item'} style={navItemStyle(active)}>
+                        <span style={{ lineHeight: 0, flexShrink: 0, color: active ? color.sidebar.iconActive : color.sidebar.iconInactive }}>
+                          <Icon size={16} />
+                        </span>
+                        {label}
+                      </Link>
+                    )
+                  })}
                 </div>
               )
             }
@@ -368,8 +343,8 @@ export default function AdminShell({ children, customTypes = [] }: { children: R
             const active = exact ? pathname === href : pathname === href || pathname.startsWith(href + '/')
             return (
               <Link key={href} href={href} className={active ? '' : 'adm-nav-item'} style={navItemStyle(active)}>
-                <span style={{ lineHeight: 0, color: active ? color.sidebar.iconActive : color.sidebar.iconInactive }}>
-                  <Icon size={15} />
+                <span style={{ lineHeight: 0, flexShrink: 0, color: active ? color.sidebar.iconActive : color.sidebar.iconInactive }}>
+                  <Icon size={16} />
                 </span>
                 {label}
               </Link>

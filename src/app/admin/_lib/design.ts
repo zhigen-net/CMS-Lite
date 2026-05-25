@@ -142,3 +142,19 @@ export const cardBase: CSSProperties = {
   border: `1px solid ${color.border}`,
   borderRadius: radius.lg,
 }
+
+// ── Page containers ───────────────────────────────────────────────────────────
+// standard: list/dashboard pages (media, content, AI, users…)
+// narrow:   settings/config/account pages
+export const pageContainer = {
+  standard: {
+    maxWidth: 1100,
+    padding: '32px 40px 48px',
+    margin: '0 auto',
+  } as CSSProperties,
+  narrow: {
+    maxWidth: 720,
+    padding: '32px 40px 48px',
+    margin: '0 auto',
+  } as CSSProperties,
+}

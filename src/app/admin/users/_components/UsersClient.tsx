@@ -154,7 +154,7 @@ export default function UsersClient() {
   if (loading) return <div style={{ padding: '40px', textAlign: 'center', color: '#a1a1aa', fontSize: '13px' }}>加载中…</div>
 
   return (
-    <div style={{ padding: '28px 32px 48px', maxWidth: 860, margin: '0 auto' }}>
+    <div style={{ padding: '32px 40px 48px', maxWidth: 1100, margin: '0 auto' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
         <div>

@@ -160,7 +160,7 @@ export default function ContentTypesClient({ initialTypes }: { initialTypes: Con
   const builtin = types.filter(t => t.is_builtin)
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: 900, margin: '0 auto' }}>
+    <div style={{ padding: '32px 40px 48px', maxWidth: 1100, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
         <div>
           <h1 style={{ fontSize: '18px', fontWeight: 700, color: '#18181b', margin: 0 }}>内容类型</h1>

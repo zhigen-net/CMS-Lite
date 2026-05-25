@@ -29,7 +29,7 @@ export default async function ContentListPage({ params, searchParams }: Props) {
   return (
     <>
     <style>{`
-      .cl-pg { padding: 28px 32px 48px; max-width: 860px; margin: 0 auto; }
+      .cl-pg { padding: 32px 40px 48px; max-width: 1100px; margin: 0 auto; }
       .cl-pg-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; gap: 12px; }
       @media(max-width:640px) { .cl-pg { padding: 16px 16px 48px; } }
     `}</style>

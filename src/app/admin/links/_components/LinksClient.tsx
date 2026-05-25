@@ -145,7 +145,7 @@ export default function LinksClient({ initialLinks }: Props) {
   }
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '900px' }}>
+    <div style={{ padding: '32px 40px 48px', maxWidth: 1100, margin: '0 auto' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.75rem' }}>
         <div>

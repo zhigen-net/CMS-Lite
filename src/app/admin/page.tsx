@@ -2,7 +2,7 @@ import { getCloudflareContext } from '@opennextjs/cloudflare'
 import Link from 'next/link'
 import { formatDate } from '@/lib/utils'
 import type { Content } from '@/types'
-import { color, fontSize, radius, STATUS_MAP } from '@/app/admin/_lib/design'
+import { color, fontSize, radius, STATUS_MAP, pageContainer } from '@/app/admin/_lib/design'
 import DashboardCards from './_components/DashboardCards'
 
 async function getStats(db: D1Database) {
@@ -43,7 +43,7 @@ export default async function AdminDashboard() {
   ]
 
   return (
-    <div style={{ padding: '28px 32px 48px', maxWidth: 860, margin: '0 auto' }}>
+    <div style={pageContainer.standard}>
       {/* Page title */}
       <div style={{ marginBottom: '28px' }}>
         <h1 style={{ fontSize: fontSize.xl, fontWeight: 600, color: color.textPrimary, letterSpacing: '-0.02em', margin: 0 }}>

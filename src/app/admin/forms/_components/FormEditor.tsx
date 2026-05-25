@@ -118,7 +118,7 @@ export default function FormEditor({ form: initialForm, submissions: initialSubs
   const sectionStyle: React.CSSProperties = { marginBottom: '1.5rem' }
 
   return (
-    <div style={{ maxWidth: '860px', margin: '0 auto', padding: '2rem 1.5rem' }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 40px 48px' }}>
       {/* Top bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
         <Link href="/admin/forms" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.8rem', color: 'var(--color-text-secondary)', textDecoration: 'none' }}>

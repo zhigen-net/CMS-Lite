@@ -38,7 +38,7 @@ export default function FormsClient({ initialForms }: Props) {
   }
 
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '2rem 1.5rem' }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 40px 48px' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem' }}>
         <div>

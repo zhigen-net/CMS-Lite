@@ -166,7 +166,7 @@ export default function CategoriesClient({ types }: Props) {
 
   if (types.length === 0) {
     return (
-      <div style={{ padding: '28px 32px', maxWidth: 860, margin: '0 auto', textAlign: 'center', color: '#a1a1aa', paddingTop: '80px' }}>
+      <div style={{ padding: '32px 40px 48px', maxWidth: 1100, margin: '0 auto', textAlign: 'center', color: '#a1a1aa', paddingTop: '80px' }}>
         <p style={{ fontSize: '14px' }}>没有启用分类的内容类型</p>
         <p style={{ fontSize: '12px', marginTop: '6px' }}>在内容类型设置中勾选「支持分类」即可</p>
       </div>
@@ -174,7 +174,7 @@ export default function CategoriesClient({ types }: Props) {
   }
 
   return (
-    <div style={{ padding: '28px 32px 48px', maxWidth: 860, margin: '0 auto' }}>
+    <div style={{ padding: '32px 40px 48px', maxWidth: 1100, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
         <div>
           <h1 style={{ fontSize: '18px', fontWeight: 600, color: '#18181b', letterSpacing: '-0.02em', margin: 0 }}>分类管理</h1>
