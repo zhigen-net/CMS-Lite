@@ -1,6 +1,4 @@
-import dynamic from 'next/dynamic'
-
-const InitWizard = dynamic(() => import('./_components/InitWizard'), { ssr: false })
+import InitWizardLoader from './_components/InitWizardLoader'
 
 export default function InitPage() {
   return (
@@ -13,7 +11,7 @@ export default function InitPage() {
           从已有网站自动抓取内容，生成分类、导航和 AI 配置
         </p>
       </div>
-      <InitWizard />
+      <InitWizardLoader />
     </div>
   )
 }
