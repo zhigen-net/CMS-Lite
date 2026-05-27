@@ -73,6 +73,15 @@ function Card({ children, style }: { children: React.ReactNode; style?: React.CS
   return <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: 16, ...style }}>{children}</div>
 }
 
+function RefreshBtn({ onClick, loading, disabled }: { onClick: () => void; loading: boolean; disabled?: boolean }) {
+  return (
+    <button onClick={onClick} disabled={loading || disabled}
+      style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, border: `1px solid ${C.border}`, background: C.bg, color: C.textMuted, cursor: loading || disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.4 : 1, whiteSpace: 'nowrap' }}>
+      {loading ? '抓取中...' : '↻ 重新抓取'}
+    </button>
+  )
+}
+
 function SectionHeader({ title, count, hint }: { title: string; count?: number; hint?: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
@@ -157,27 +166,30 @@ function Step3({ status, log }: { status: 'idle' | 'running' | 'done' | 'error';
 }
 
 // ─── Step 4 helpers ───────────────────────────────────────────
-function PlanSection({ title, count, children, defaultOpen = true }: { title: string; count?: number; children: React.ReactNode; defaultOpen?: boolean }) {
+function PlanSection({ title, count, children, defaultOpen = true, action }: { title: string; count?: number; children: React.ReactNode; defaultOpen?: boolean; action?: React.ReactNode }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
     <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
-      <button onClick={() => setOpen(o => !o)}
-        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: C.bgSubtle, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: C.text }}>
+      <div onClick={() => setOpen(o => !o)}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: C.bgSubtle, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: C.text, userSelect: 'none' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {title}
           {count !== undefined && <span style={{ fontSize: 11, padding: '1px 7px', background: '#e4e4e7', borderRadius: 10, fontWeight: 400, color: C.textMuted }}>{count} 项</span>}
         </span>
-        <span style={{ color: C.textMuted, fontSize: 12 }}>{open ? '▲' : '▼'}</span>
-      </button>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {action && <span onClick={e => e.stopPropagation()}>{action}</span>}
+          <span style={{ color: C.textMuted, fontSize: 12 }}>{open ? '▲' : '▼'}</span>
+        </span>
+      </div>
       {open && <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>{children}</div>}
     </div>
   )
 }
 
-function ContactSection({ info, onChange, disabled }: { info: InitPlan['contactInfo']; onChange: (v: InitPlan['contactInfo']) => void; disabled: boolean }) {
+function ContactSection({ info, onChange, disabled, onRefresh, refreshing }: { info: InitPlan['contactInfo']; onChange: (v: InitPlan['contactInfo']) => void; disabled: boolean; onRefresh?: () => void; refreshing?: boolean }) {
   const set = (k: keyof typeof info, v: string) => onChange({ ...info, [k]: v })
   return (
-    <PlanSection title="联系信息">
+    <PlanSection title="联系信息" action={onRefresh && <RefreshBtn onClick={onRefresh} loading={!!refreshing} disabled={disabled} />}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <div><Label>电话</Label><Input value={info.phone ?? ''} onChange={v => set('phone', v)} placeholder="未提取到" disabled={disabled} /></div>
         <div><Label>邮箱</Label><Input value={info.email ?? ''} onChange={v => set('email', v)} placeholder="未提取到" disabled={disabled} /></div>
@@ -188,9 +200,9 @@ function ContactSection({ info, onChange, disabled }: { info: InitPlan['contactI
   )
 }
 
-function AboutSection({ page, onChange, disabled }: { page?: InitPlan['aboutPage']; onChange: (v: InitPlan['aboutPage']) => void; disabled: boolean }) {
+function AboutSection({ page, onChange, disabled, onRefresh, refreshing }: { page?: InitPlan['aboutPage']; onChange: (v: InitPlan['aboutPage']) => void; disabled: boolean; onRefresh?: () => void; refreshing?: boolean }) {
   return (
-    <PlanSection title="机构介绍" count={page?.content ? 1 : 0}>
+    <PlanSection title="机构介绍" count={page?.content ? 1 : 0} action={onRefresh && <RefreshBtn onClick={onRefresh} loading={!!refreshing} disabled={disabled} />}>
       {page?.content
         ? <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div><Label>标题</Label><Input value={page.title} onChange={v => onChange({ ...page, title: v })} disabled={disabled} /></div>
@@ -202,9 +214,9 @@ function AboutSection({ page, onChange, disabled }: { page?: InitPlan['aboutPage
   )
 }
 
-function TeamSection({ members, onChange, disabled }: { members: InitTeamMember[]; onChange: (v: InitTeamMember[]) => void; disabled: boolean }) {
+function TeamSection({ members, onChange, disabled, onRefresh, refreshing }: { members: InitTeamMember[]; onChange: (v: InitTeamMember[]) => void; disabled: boolean; onRefresh?: () => void; refreshing?: boolean }) {
   return (
-    <PlanSection title="团队成员" count={members.length} defaultOpen={members.length > 0}>
+    <PlanSection title="团队成员" count={members.length} defaultOpen={members.length > 0} action={onRefresh && <RefreshBtn onClick={onRefresh} loading={!!refreshing} disabled={disabled} />}>
       {members.length === 0
         ? <div style={{ fontSize: 13, color: C.textMuted, padding: '8px 0' }}>未从来源网站提取到团队成员信息</div>
         : members.map((m, i) => (
@@ -234,9 +246,9 @@ function TeamSection({ members, onChange, disabled }: { members: InitTeamMember[
   )
 }
 
-function ServiceSection({ services, onChange, disabled }: { services: InitService[]; onChange: (v: InitService[]) => void; disabled: boolean }) {
+function ServiceSection({ services, onChange, disabled, onRefresh, refreshing }: { services: InitService[]; onChange: (v: InitService[]) => void; disabled: boolean; onRefresh?: () => void; refreshing?: boolean }) {
   return (
-    <PlanSection title="服务项目" count={services.length} defaultOpen={services.length > 0}>
+    <PlanSection title="服务项目" count={services.length} defaultOpen={services.length > 0} action={onRefresh && <RefreshBtn onClick={onRefresh} loading={!!refreshing} disabled={disabled} />}>
       {services.length === 0
         ? <div style={{ fontSize: 13, color: C.textMuted, padding: '8px 0' }}>未从来源网站提取到服务项目</div>
         : services.map((s, i) => (
@@ -253,9 +265,9 @@ function ServiceSection({ services, onChange, disabled }: { services: InitServic
   )
 }
 
-function CaseSection({ cases, onChange, disabled }: { cases: InitCase[]; onChange: (v: InitCase[]) => void; disabled: boolean }) {
+function CaseSection({ cases, onChange, disabled, onRefresh, refreshing }: { cases: InitCase[]; onChange: (v: InitCase[]) => void; disabled: boolean; onRefresh?: () => void; refreshing?: boolean }) {
   return (
-    <PlanSection title="成功案例" count={cases.length} defaultOpen={cases.length > 0}>
+    <PlanSection title="成功案例" count={cases.length} defaultOpen={cases.length > 0} action={onRefresh && <RefreshBtn onClick={onRefresh} loading={!!refreshing} disabled={disabled} />}>
       {cases.length === 0
         ? <div style={{ fontSize: 13, color: C.textMuted, padding: '8px 0' }}>未从来源网站提取到案例</div>
         : cases.map((c, i) => (
@@ -271,11 +283,33 @@ function CaseSection({ cases, onChange, disabled }: { cases: InitCase[]; onChang
 }
 
 // ─── Step 4 main ──────────────────────────────────────────────
-function Step4({ plan, onChange, executing, done, execResult }: {
+function Step4({ plan, onChange, executing, done, execResult, contentSourceUrl, basicInfo }: {
   plan: InitPlan; onChange: (p: InitPlan) => void; executing: boolean; done: boolean
   execResult: { categoriesCreated: number; contentsImported: number; errors: string[] } | null
+  contentSourceUrl: string; basicInfo: InitBasicInfo
 }) {
   const upd = <K extends keyof InitPlan>(k: K, v: InitPlan[K]) => onChange({ ...plan, [k]: v })
+  const [refreshing, setRefreshing] = useState<string | null>(null)
+
+  async function handleRefresh(sectionType: string) {
+    setRefreshing(sectionType)
+    try {
+      const resp = await fetch('/api/agents/init/refresh-section', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sectionType, contentSourceUrl }),
+      })
+      const result = await resp.json() as { ok: boolean; data?: Partial<InitPlan>; error?: string }
+      if (!result.ok || !result.data) { alert(result.error || '抓取失败'); return }
+      onChange({ ...plan, ...result.data })
+    } catch (err) {
+      alert(String(err))
+    } finally {
+      setRefreshing(null)
+    }
+  }
+
+  const canRefresh = !executing && !refreshing
 
   if (done && execResult) {
     return (
@@ -324,19 +358,24 @@ function Step4({ plan, onChange, executing, done, execResult }: {
       </PlanSection>
 
       {/* 联系信息 */}
-      <ContactSection info={plan.contactInfo} onChange={v => upd('contactInfo', v)} disabled={executing} />
+      <ContactSection info={plan.contactInfo} onChange={v => upd('contactInfo', v)} disabled={executing}
+        onRefresh={canRefresh ? () => handleRefresh('contact') : undefined} refreshing={refreshing === 'contact'} />
 
       {/* 机构介绍 */}
-      <AboutSection page={plan.aboutPage} onChange={v => upd('aboutPage', v)} disabled={executing} />
+      <AboutSection page={plan.aboutPage} onChange={v => upd('aboutPage', v)} disabled={executing}
+        onRefresh={canRefresh ? () => handleRefresh('about') : undefined} refreshing={refreshing === 'about'} />
 
       {/* 团队成员 */}
-      <TeamSection members={plan.teamMembers} onChange={v => upd('teamMembers', v)} disabled={executing} />
+      <TeamSection members={plan.teamMembers} onChange={v => upd('teamMembers', v)} disabled={executing}
+        onRefresh={canRefresh ? () => handleRefresh('team') : undefined} refreshing={refreshing === 'team'} />
 
       {/* 服务项目 */}
-      <ServiceSection services={plan.services} onChange={v => upd('services', v)} disabled={executing} />
+      <ServiceSection services={plan.services} onChange={v => upd('services', v)} disabled={executing}
+        onRefresh={canRefresh ? () => handleRefresh('services') : undefined} refreshing={refreshing === 'services'} />
 
       {/* 成功案例 */}
-      <CaseSection cases={plan.cases} onChange={v => upd('cases', v)} disabled={executing} />
+      <CaseSection cases={plan.cases} onChange={v => upd('cases', v)} disabled={executing}
+        onRefresh={canRefresh ? () => handleRefresh('cases') : undefined} refreshing={refreshing === 'cases'} />
 
       {/* 内容分类 */}
       <PlanSection title="内容分类" count={plan.categories.length} defaultOpen={false}>
@@ -495,7 +534,7 @@ export default function InitWizard() {
         {step === 0 && <Step1 info={basicInfo} onChange={setBasicInfo} />}
         {step === 1 && <Step2 contentSourceUrl={contentSourceUrl} styleReferenceUrl={styleReferenceUrl} onChange={(k, v) => k === 'contentSourceUrl' ? setContentSourceUrl(v) : setStyleReferenceUrl(v)} />}
         {step === 2 && <Step3 status={analyzeStatus} log={analyzeLog} />}
-        {step === 3 && plan && <Step4 plan={plan} onChange={setPlan} executing={executing} done={execDone} execResult={execResult} />}
+        {step === 3 && plan && <Step4 plan={plan} onChange={setPlan} executing={executing} done={execDone} execResult={execResult} contentSourceUrl={contentSourceUrl} basicInfo={basicInfo} />}
       </Card>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16 }}>
@@ -510,7 +549,7 @@ export default function InitWizard() {
             </Btn>
           )}
           {step === 2 && analyzeStatus === 'done' && (
-            <Btn variant="outline" onClick={() => { setAnalyzeStatus('idle'); setAnalyzeLog([]); setPlan(null) }} disabled={analyzeStatus === 'running'}>重新抓取</Btn>
+            <Btn variant="outline" onClick={() => { setAnalyzeStatus('idle'); setAnalyzeLog([]); setPlan(null) }}>重新抓取</Btn>
           )}
           {step < 3 && !(step === 2 && analyzeStatus !== 'done') && (
             <Btn onClick={() => setStep(s => s + 1)} disabled={!canProceed()}>下一步</Btn>
