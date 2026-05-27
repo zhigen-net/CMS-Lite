@@ -279,6 +279,103 @@ ${homepageMd.slice(0, 2000)}
   }
 }
 
+export type RefreshSectionType = 'contact' | 'about' | 'team' | 'services' | 'cases'
+
+const SECTION_PAGE_TYPES: Record<RefreshSectionType, string[]> = {
+  contact: ['contact'],
+  about: ['about'],
+  team: ['team'],
+  services: ['service'],
+  cases: ['case'],
+}
+
+const SECTION_PROMPTS: Record<RefreshSectionType, string> = {
+  contact: `提取联系信息，纯JSON输出：{"contactInfo":{"phone":"","address":"","email":"","hours":""}}`,
+  about: `提取机构介绍，纯JSON输出：{"aboutPage":{"title":"关于我们","content":"300字以内Markdown正文"}}`,
+  team: `提取团队成员，纯JSON输出：{"teamMembers":[{"name":"","title":"","profileUrl":"对应[profile]页面的完整URL，精确匹配页面列表，没有则空字符串","bio":"若无profile页则提取可用简介，否则留空"}]}`,
+  services: `提取服务项目，纯JSON输出：{"services":[{"name":"","slug":"service-slug","description":"完整描述Markdown"}]}`,
+  cases: `提取成功案例，纯JSON输出：{"cases":[{"title":"","description":"完整描述","outcome":"结果/成效"}]}`,
+}
+
+export async function refreshSection(
+  env: CloudflareEnv,
+  type: RefreshSectionType,
+  contentSourceUrl: string,
+): Promise<Partial<InitPlan>> {
+  const jinaKey = env.JINA_API_KEY || undefined
+  const homepageMd = await fetchWithJina(contentSourceUrl, jinaKey)
+
+  // Find URLs relevant to this section
+  const subUrls = extractAndRankUrls(homepageMd, contentSourceUrl)
+  const relevantTypes = SECTION_PAGE_TYPES[type]
+  const relevantUrls = subUrls.filter(url =>
+    PAGE_SCORES.some(p => relevantTypes.includes(p.type) && p.keywords.some(k => url.toLowerCase().includes(k)))
+  )
+
+  const crawledPages: { url: string; content: string; type?: string }[] = []
+  for (const u of relevantUrls.slice(0, 3)) {
+    await new Promise(r => setTimeout(r, 800))
+    try {
+      const md = await fetchWithJina(u, jinaKey)
+      const pageType = PAGE_SCORES.find(p => p.keywords.some(k => u.toLowerCase().includes(k)))?.type
+      crawledPages.push({ url: u, content: md.slice(0, 6000), type: pageType })
+    } catch { /* ignore */ }
+  }
+
+  // For team: also crawl individual profile pages
+  const profileContentMap = new Map<string, { content: string; imageUrl?: string }>()
+  if (type === 'team') {
+    const origin = new URL(contentSourceUrl).origin
+    const profileUrls = new Set<string>()
+    for (const tp of crawledPages.filter(p => p.type === 'team')) {
+      for (const m of tp.content.matchAll(/\[([^\]]+)\]\((https?:\/\/[^)#?]+)\)/g)) {
+        const u = m[2].replace(/\/$/, '')
+        if (!u.startsWith(origin) || crawledPages.some(p => p.url === u)) continue
+        if (/\/(team|doctor|dr|physician|staff|specialist|expert|member)s?\/[^/]+$/.test(u.toLowerCase())) {
+          profileUrls.add(u)
+        }
+      }
+    }
+    for (const u of Array.from(profileUrls).slice(0, 6)) {
+      await new Promise(r => setTimeout(r, 800))
+      try {
+        const md = await fetchWithJina(u, jinaKey)
+        crawledPages.push({ url: u, content: md, type: 'profile' })
+        profileContentMap.set(u, { content: md, imageUrl: extractFirstMeaningfulImage(md) })
+      } catch { /* ignore */ }
+    }
+  }
+
+  const profilePages = crawledPages.filter(p => p.type === 'profile')
+  const nonProfilePages = crawledPages.filter(p => p.type !== 'profile')
+  const pageContent = [
+    `=== 首页 ===\n${homepageMd.slice(0, 2000)}`,
+    ...profilePages.map(p => `=== ${p.url} [profile] ===\n${p.content.slice(0, 600)}`),
+    ...nonProfilePages.map(p => `=== ${p.url}${p.type ? ` [${p.type}]` : ''} ===\n${p.content.slice(0, 3000)}`),
+  ].join('\n\n')
+
+  const prompt = `你是数据提取助手。${SECTION_PROMPTS[type]}\n\n## 网页内容\n${pageContent.slice(0, 10000)}`
+  const raw = await generateText(env, prompt, undefined, 6000, DEFAULT_MODELS.content)
+  const result = parseJson(raw) as Partial<InitPlan> & {
+    teamMembers?: (InitPlan['teamMembers'][number] & { profileUrl?: string })[]
+  }
+
+  if (type === 'team' && result.teamMembers) {
+    type RawMember = InitPlan['teamMembers'][number] & { profileUrl?: string }
+    result.teamMembers = (result.teamMembers as RawMember[]).map(m => {
+      const profileData = m.profileUrl ? profileContentMap.get(m.profileUrl) : undefined
+      return {
+        name: m.name,
+        title: m.title,
+        bio: profileData ? profileData.content : (m.bio || ''),
+        imageUrl: profileData?.imageUrl,
+      }
+    })
+  }
+
+  return result
+}
+
 export interface ExecuteResult {
   settingsUpdated: boolean
   categoriesCreated: number
