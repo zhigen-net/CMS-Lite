@@ -8,9 +8,10 @@ interface Props {
   post: Content
   featured?: boolean
   category?: Category
+  showAiBadge?: boolean
 }
 
-export default function PostCard({ post, featured = false, category }: Props) {
+export default function PostCard({ post, featured = false, category, showAiBadge = true }: Props) {
   const href = post.type === 'page' ? `/${post.slug}` : `/post/${post.slug}`
   const readTime = post.content ? estimateReadingTime(post.content) : 0
   const date = post.published_at ? formatDate(post.published_at) : formatDate(post.created_at)
@@ -55,7 +56,7 @@ export default function PostCard({ post, featured = false, category }: Props) {
                   color: '#fff', textDecoration: 'none',
                 }}>{cat.name}</Link>
               )}
-              {post.ai_generated && (
+              {showAiBadge && post.ai_generated && (
                 <span style={{
                   fontSize: '0.65rem', fontWeight: 600, padding: '0.2rem 0.5rem',
                   borderRadius: '4px', border: '1px solid var(--color-border)',
@@ -154,7 +155,7 @@ export default function PostCard({ post, featured = false, category }: Props) {
 
       {/* Content */}
       <div style={{ padding: '1.25rem 1.375rem 1.375rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-        {post.ai_generated && (
+        {showAiBadge && post.ai_generated && (
           <span style={{
             display: 'inline-block', alignSelf: 'flex-start',
             fontSize: '0.6rem', fontWeight: 700, padding: '0.15rem 0.5rem',

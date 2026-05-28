@@ -39,12 +39,15 @@ export default function ThemeManager({
     if (themeId === active) return
     setActivating(themeId)
     try {
-      const res = await fetch('/api/settings', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 'theme.active': themeId }),
-      })
-      if (res.ok) setActive(themeId)
+      const [settingsRes] = await Promise.all([
+        fetch('/api/settings', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 'theme.active': themeId }),
+        }),
+        fetch(`/api/themes/${themeId}/provision`, { method: 'POST' }),
+      ])
+      if (settingsRes.ok) setActive(themeId)
     } finally { setActivating(null) }
   }
 

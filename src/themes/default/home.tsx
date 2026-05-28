@@ -95,6 +95,7 @@ function HeroCarousel({ post }: { post: Content }) {
 export default function DefaultHome({ posts, settings, categories = [], categoryMap = {}, pagination, tags = [] }: Props) {
   const siteName = settings['site.name'] as string
   const siteDesc = settings['site.description'] as string | null
+  const showAiBadge = settings['site.showAiBadge'] !== false
 
   const featured = posts[0]
   const secondary = posts.slice(1, 3)
@@ -211,7 +212,7 @@ export default function DefaultHome({ posts, settings, categories = [], category
                 </div>
                 <div className="home-secondary">
                   {secondary.map(post => (
-                    <PostCard key={post.id} post={post} category={categoryMap[post.categories?.[0]?.id ?? '']} />
+                    <PostCard key={post.id} post={post} category={categoryMap[post.categories?.[0]?.id ?? '']} showAiBadge={showAiBadge} />
                   ))}
                 </div>
               </section>
@@ -227,7 +228,7 @@ export default function DefaultHome({ posts, settings, categories = [], category
                 </div>
                 <div className="home-grid">
                   {rest.map(post => (
-                    <PostCard key={post.id} post={post} category={categoryMap[post.categories?.[0]?.id ?? '']} />
+                    <PostCard key={post.id} post={post} category={categoryMap[post.categories?.[0]?.id ?? '']} showAiBadge={showAiBadge} />
                   ))}
                 </div>
               </section>

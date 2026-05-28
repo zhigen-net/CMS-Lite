@@ -1,5 +1,5 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
-import { getContents, createContent, setContentTags, setContentCategories } from '@/lib/db'
+import { getContents, createContent, setContentTags, setContentCategories, saveContentFields } from '@/lib/db'
 import { getCurrentUser, requireAdmin } from '@/lib/auth'
 import { generateId, slugify } from '@/lib/utils'
 import { z } from 'zod'
@@ -41,6 +41,7 @@ const createSchema = z.object({
   tags: z.array(z.string()).optional(),
   parent_id: z.string().nullable().optional(),
   sort_order: z.number().optional(),
+  fields: z.record(z.unknown()).optional(),
 })
 
 // POST /api/contents
@@ -86,6 +87,9 @@ export async function POST(request: Request) {
   }
   if (data.tags?.length) {
     await setContentTags(env.DB, id, data.tags)
+  }
+  if (data.fields && Object.keys(data.fields).length) {
+    await saveContentFields(env.DB, id, data.fields)
   }
 
   return Response.json({ id, slug }, { status: 201 })

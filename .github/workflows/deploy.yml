@@ -1,8 +1,7 @@
 name: 🔄 Deploy
 
 on:
-  push:
-    branches: ['**']
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -25,11 +24,23 @@ jobs:
 
       - name: Set project name
         run: |
-          RAW="${{ secrets.CMS_PROJECT_NAME || format('{0}-{1}', github.event.repository.name, github.ref_name) }}"
-          PROJECT="${RAW,,}"
+          CMS_CUSTOM="${{ secrets.CMS_PROJECT_NAME }}"
+          if [ -n "$CMS_CUSTOM" ]; then
+            RAW="$CMS_CUSTOM"
+          else
+            # owner首词（按 - _ 分割）+ 完整repo名 + branch首词（按 / 分割）
+            OWNER_WORD=$(echo "${{ github.event.repository.owner.login }}" | tr '[:upper:]' '[:lower:]' | sed 's/[-_].*//')
+            REPO_CLEAN=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g; s/-\+/-/g; s/^-//; s/-$//')
+            BRANCH_WORD=$(echo "${{ github.ref_name }}" | tr '[:upper:]' '[:lower:]' | sed 's/\/.*//' | sed 's/[^a-z0-9-]/-/g; s/-\+/-/g; s/^-//; s/-$//')
+            RAW="${OWNER_WORD}-${REPO_CLEAN}-${BRANCH_WORD}"
+          fi
+          PROJECT="${RAW//[^a-z0-9-]/-}"
+          PROJECT=$(echo "$PROJECT" | sed 's/-\+/-/g; s/^-//; s/-$//')
+          PROJECT=$(echo "${PROJECT:0:63}" | sed 's/-$//')
           echo "PROJECT_NAME=$PROJECT" >> $GITHUB_ENV
           echo "DB_NAME=$PROJECT-db" >> $GITHUB_ENV
           echo "BUCKET_NAME=$PROJECT-media" >> $GITHUB_ENV
+          echo "→ Project name: $PROJECT"
 
       - name: Get D1 database ID
         run: |
@@ -58,6 +69,11 @@ jobs:
             "INSERT OR IGNORE INTO migrations(version,name) SELECT 7,'0007_categories_sort_order' WHERE (SELECT COUNT(*) FROM pragma_table_info('categories') WHERE name='sort_order')>0" \
             2>/dev/null || true
 
+          # Repair migration 9: re-encode storage settings that were stored as plain strings instead of JSON
+          npx wrangler d1 execute "$DB_NAME" --remote --command \
+            "UPDATE settings SET value='\"r2\"' WHERE key='storage.driver' AND value='r2'; UPDATE settings SET value='\"\"' WHERE key='storage.s3.endpoint' AND value=''; UPDATE settings SET value='\"\"' WHERE key='storage.s3.bucket' AND value=''; UPDATE settings SET value='\"auto\"' WHERE key='storage.s3.region' AND value='auto'; UPDATE settings SET value='\"\"' WHERE key='storage.s3.public_url' AND value=''" \
+            2>/dev/null || true
+
           for f in $(ls migrations/*.sql | sort); do
             VERSION=$(basename "$f" | grep -o '^[0-9]*' | sed 's/^0*//')
             APPLIED=$(npx wrangler d1 execute "$DB_NAME" --remote \
@@ -80,6 +96,12 @@ jobs:
 
       - name: Deploy
         run: |
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          COMMIT_MSG=$(git log -1 --pretty=%s | LC_ALL=C tr -cd '[:print:]' | cut -c1-100)
+          [ -z "$COMMIT_MSG" ] && COMMIT_MSG="Deploy $COMMIT_HASH"
           npx wrangler pages deploy dist \
             --project-name="$PROJECT_NAME" \
-            --branch main
+            --branch main \
+            --commit-dirty=true \
+            --commit-hash="$COMMIT_HASH" \
+            --commit-message="$COMMIT_MSG"

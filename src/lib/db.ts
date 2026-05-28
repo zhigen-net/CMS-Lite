@@ -1,4 +1,4 @@
-import type { Content, ContentType, Category, Tag, User, Media, Plugin, ListResult, AITask, AITaskType, AITaskStatus, Form, FormSubmission } from '@/types'
+import type { Content, ContentType, Category, Tag, User, Media, ListResult, AITask, AITaskType, AITaskStatus, Form, FormSubmission, Link } from '@/types'
 
 export function getDB(env: CloudflareEnv): D1Database {
   return env.DB
@@ -130,8 +130,6 @@ export async function getContents(
     params.push(tagId)
   }
 
-  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
-
   if (search) {
     const ftsResult = await db
       .prepare(`SELECT id FROM contents_fts WHERE contents_fts MATCH ? LIMIT 100`)
@@ -143,6 +141,8 @@ export async function getContents(
     conditions.push(`c.id IN (${inClause})`)
     params.push(...ids)
   }
+
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
 
   return paginate<Content>(
     db,
@@ -158,13 +158,13 @@ export async function getContents(
 export async function getContent(db: D1Database, id: string): Promise<Content | null> {
   const row = await db.prepare('SELECT * FROM contents WHERE id = ?').bind(id).first<Content>()
   if (!row) return null
-  return parseContent(row)
+  return attachContentFields(db, parseContent(row))
 }
 
 export async function getContentBySlug(db: D1Database, type: string, slug: string): Promise<Content | null> {
   const row = await db.prepare('SELECT * FROM contents WHERE type = ? AND slug = ?').bind(type, slug).first<Content>()
   if (!row) return null
-  return parseContent(row)
+  return attachContentFields(db, parseContent(row))
 }
 
 function parseContent(row: Content): Content {
@@ -172,6 +172,28 @@ function parseContent(row: Content): Content {
     ...row,
     ai_generated: Boolean(row.ai_generated),
     ai_reviewed: Boolean(row.ai_reviewed),
+  }
+}
+
+async function attachContentFields(db: D1Database, content: Content): Promise<Content> {
+  const rows = await db.prepare('SELECT field_key, field_value FROM content_fields WHERE content_id = ?')
+    .bind(content.id).all<{ field_key: string; field_value: string }>()
+  if (!rows.results.length) return content
+  const fields: Record<string, unknown> = {}
+  for (const r of rows.results) {
+    try { fields[r.field_key] = JSON.parse(r.field_value) } catch { fields[r.field_key] = r.field_value }
+  }
+  return { ...content, fields }
+}
+
+export async function saveContentFields(db: D1Database, contentId: string, fields: Record<string, unknown>): Promise<void> {
+  const entries = Object.entries(fields)
+  if (!entries.length) return
+  for (const [key, value] of entries) {
+    const serialized = JSON.stringify(value)
+    await db.prepare(
+      'INSERT INTO content_fields (id, content_id, field_key, field_value) VALUES (?, ?, ?, ?) ON CONFLICT(content_id, field_key) DO UPDATE SET field_value = excluded.field_value'
+    ).bind(`${contentId}_${key}`, contentId, key, serialized).run()
   }
 }
 
@@ -340,13 +362,17 @@ export async function setContentTags(db: D1Database, contentId: string, tagNames
   for (const name of tagNames) {
     const trimmed = name.trim()
     if (!trimmed) continue
-    const existing = await db.prepare('SELECT id FROM tags WHERE name = ?').bind(trimmed).first<{ id: string }>()
-    const tagId = existing?.id ?? crypto.randomUUID().replace(/-/g, '')
-    const slug = trimmed.toLowerCase().replace(/\s+/g, '-').replace(/[^\x00-\x7F]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '') || tagId
-    if (!existing) {
+    let tagRow = await db.prepare('SELECT id FROM tags WHERE name = ?').bind(trimmed).first<{ id: string }>()
+    if (!tagRow) {
+      const tagId = crypto.randomUUID().replace(/-/g, '')
+      const rawSlug = trimmed.toLowerCase().replace(/\s+/g, '-').replace(/[^\x00-\x7F]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '')
+      // If rawSlug collides with an existing tag's slug, fall back to tagId to avoid INSERT OR IGNORE silently failing
+      const slugTaken = rawSlug ? !!(await db.prepare('SELECT 1 FROM tags WHERE slug = ?').bind(rawSlug).first()) : false
+      const slug = rawSlug && !slugTaken ? rawSlug : tagId
       await db.prepare('INSERT OR IGNORE INTO tags (id, name, slug) VALUES (?, ?, ?)').bind(tagId, trimmed, slug).run()
+      tagRow = { id: tagId }
     }
-    await db.prepare('INSERT OR IGNORE INTO content_tags (content_id, tag_id) VALUES (?, ?)').bind(contentId, tagId).run()
+    await db.prepare('INSERT OR IGNORE INTO content_tags (content_id, tag_id) VALUES (?, ?)').bind(contentId, tagRow.id).run()
   }
 }
 
@@ -591,25 +617,6 @@ export async function setSetting(db: D1Database, key: string, value: unknown): P
   ).bind(key, JSON.stringify(value)).run()
 }
 
-// ── 插件 ────────────────────────────────────────────────────
-
-export async function getPlugins(db: D1Database): Promise<Plugin[]> {
-  const rows = await db.prepare('SELECT * FROM plugins ORDER BY installed_at').all<Record<string, unknown>>()
-  return rows.results.map(r => ({
-    id: r.id as string,
-    name: r.name as string,
-    version: r.version as string,
-    enabled: Boolean(r.enabled),
-    config: JSON.parse((r.config as string) || '{}'),
-    installed_at: r.installed_at as number,
-    updated_at: r.updated_at as number,
-  }))
-}
-
-export async function setPluginEnabled(db: D1Database, id: string, enabled: boolean): Promise<void> {
-  await db.prepare('UPDATE plugins SET enabled = ?, updated_at = unixepoch() WHERE id = ?').bind(enabled ? 1 : 0, id).run()
-}
-
 // ── 表单 ────────────────────────────────────────────────────
 
 function parseForm(r: Record<string, unknown>): Form {
@@ -770,6 +777,39 @@ export async function getApiKeyByHash(db: D1Database, hash: string): Promise<{ u
   db.prepare('UPDATE api_keys SET last_used_at = ? WHERE key_hash = ?')
     .bind(Math.floor(Date.now() / 1000), hash).run().catch(() => {})
   return { user_id: row.user_id as string, permissions: JSON.parse(row.permissions as string) }
+}
+
+// ── 友情链接 ────────────────────────────────────────────────
+
+export async function getLinks(db: D1Database, includeHidden = false): Promise<Link[]> {
+  const sql = includeHidden
+    ? 'SELECT * FROM links ORDER BY sort_order ASC, created_at ASC'
+    : "SELECT * FROM links WHERE status = 'active' ORDER BY sort_order ASC, created_at ASC"
+  const rows = await db.prepare(sql).all<Link>()
+  return rows.results
+}
+
+export async function createLink(db: D1Database, data: Omit<Link, 'created_at'>): Promise<void> {
+  await db.prepare(
+    'INSERT INTO links (id, name, url, description, logo, sort_order, status) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  ).bind(data.id, data.name, data.url, data.description ?? null, data.logo ?? null, data.sort_order, data.status).run()
+}
+
+export async function updateLink(db: D1Database, id: string, data: Partial<Omit<Link, 'id' | 'created_at'>>): Promise<void> {
+  const sets: string[] = []
+  const params: unknown[] = []
+  if (data.name       !== undefined) { sets.push('name = ?');        params.push(data.name) }
+  if (data.url        !== undefined) { sets.push('url = ?');         params.push(data.url) }
+  if (data.description !== undefined) { sets.push('description = ?'); params.push(data.description) }
+  if (data.logo       !== undefined) { sets.push('logo = ?');        params.push(data.logo) }
+  if (data.sort_order !== undefined) { sets.push('sort_order = ?');   params.push(data.sort_order) }
+  if (data.status     !== undefined) { sets.push('status = ?');      params.push(data.status) }
+  if (!sets.length) return
+  await db.prepare(`UPDATE links SET ${sets.join(', ')} WHERE id = ?`).bind(...params, id).run()
+}
+
+export async function deleteLink(db: D1Database, id: string): Promise<void> {
+  await db.prepare('DELETE FROM links WHERE id = ?').bind(id).run()
 }
 
 export async function publishScheduled(db: D1Database): Promise<{ published: number; ids: string[] }> {

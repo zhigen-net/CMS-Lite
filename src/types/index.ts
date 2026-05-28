@@ -1,6 +1,6 @@
 export type ContentStatus = 'draft' | 'published' | 'scheduled'
 export type UserRole = 'admin' | 'editor' | 'author'
-export type AITaskType = 'content' | 'seo' | 'design' | 'analytics' | 'setup'
+export type AITaskType = 'content' | 'seo' | 'review' | 'design' | 'analytics' | 'setup'
 export type AITaskStatus = 'pending' | 'running' | 'done' | 'failed'
 
 export interface ContentType {
@@ -137,16 +137,6 @@ export interface FormSubmission {
   created_at: number
 }
 
-export interface Plugin {
-  id: string
-  name: string
-  version: string
-  enabled: boolean
-  config: Record<string, unknown>
-  installed_at: number
-  updated_at: number
-}
-
 export interface AITask {
   id: string
   type: AITaskType
@@ -162,6 +152,7 @@ export interface CategoryPlan {
   categoryId: string
   count: number
   topicFocus: string
+  weight?: number
 }
 
 export interface SiteSettings {
@@ -192,9 +183,7 @@ export interface SiteSettings {
   'ai.content.count': number
   'ai.content.autoPublish': boolean
   'ai.content.length': 'short' | 'medium' | 'long'
-  'ai.content.defaultCategoryIds': string[]
   'ai.content.categoryPlans': CategoryPlan[]
-  'ai.content.generateCover': boolean
   'ai.content.imageSource': 'ai' | 'unsplash' | 'none'
   'ai.content.bodyImageSource': 'none' | 'unsplash' | 'ai'
   'ai.content.unsplashKey': string
@@ -209,11 +198,29 @@ export interface SiteSettings {
   'ai.topic.prompt': string
   'ai.content.systemPrompt': string
   'ai.content.userPrompt': string
-  // SEO Agent
+  // SEO Agent（保留旧键兼容历史数据）
   'ai.seo.batchSize': number
   'ai.seo.priorityAI': boolean
+  // 审核 Agent
+  'ai.review.batchSize': number
+  'ai.review.priorityUnreviewed': boolean
+  'ai.review.fixMeta': boolean
+  'ai.review.fixExcerpt': boolean
+  'ai.review.model': string
   'ai.trigger.token': string
+  // 发布计划
+  'ai.schedule.enabled': boolean
+  'ai.schedule.runMin': number
+  'ai.schedule.runMax': number
+  'ai.schedule.dailyMax': number
+  'site.showAiBadge': boolean
   'setup.completed': boolean
+  // 存储驱动
+  'storage.driver': 'r2' | 's3'
+  'storage.s3.endpoint': string
+  'storage.s3.bucket': string
+  'storage.s3.region': string
+  'storage.s3.public_url': string
 }
 
 export interface NavItem {
@@ -244,4 +251,33 @@ export interface ApiKey {
   permissions: string[]
   created_at: number
   last_used_at: number | null
+}
+
+export interface Link {
+  id: string
+  name: string
+  url: string
+  description: string | null
+  logo: string | null
+  sort_order: number
+  status: 'active' | 'hidden'
+  created_at: number
+}
+
+export interface InitBasicInfo {
+  siteName: string
+  language: 'zh' | 'en' | 'bilingual'
+  siteType: 'showcase' | 'marketing' | 'news' | 'ecommerce'
+  industry: string
+  targetAudience: string
+  brandColor?: string
+}
+
+export interface InitPlan {
+  siteSettings: { name: string; description: string; url?: string }
+  categories: { name: string; slug: string; description?: string }[]
+  navigation: { label: string; url: string }[]
+  aiConfig: { siteTopics: string; targetAudience: string; writingStyle: string }
+  importItems: { title: string; content: string; excerpt: string; categorySlug?: string }[]
+  summary: string
 }

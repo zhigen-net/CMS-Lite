@@ -93,6 +93,7 @@ function ImageUploader({ value, onChange, label }: { value: string; onChange: (u
 const TABS = [
   { id: 'basic', label: '基本设置' },
   { id: 'seo', label: 'SEO' },
+  { id: 'storage', label: '存储' },
 ] as const
 type Tab = typeof TABS[number]['id']
 
@@ -212,6 +213,31 @@ export default function SettingsClient({ initialSettings }: Props) {
               <p style={hintStyle}>影响 AI 生成内容和对话的语气风格</p>
             </div>
 
+            {divider}
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+              <div>
+                <label style={labelStyle}>显示 AI 生成标识</label>
+                <p style={hintStyle}>开启后，AI 生成的文章在前台列表和详情页会显示"AI"角标</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => update('site.showAiBadge', settings['site.showAiBadge'] === false)}
+                style={{
+                  flexShrink: 0, width: '40px', height: '22px', borderRadius: '11px', border: 'none',
+                  background: settings['site.showAiBadge'] !== false ? '#18181b' : '#d4d4d8',
+                  cursor: 'pointer', position: 'relative', transition: 'background 0.2s',
+                }}
+              >
+                <span style={{
+                  position: 'absolute', top: '3px',
+                  left: settings['site.showAiBadge'] !== false ? '21px' : '3px',
+                  width: '16px', height: '16px', borderRadius: '50%',
+                  background: '#fff', transition: 'left 0.2s',
+                }} />
+              </button>
+            </div>
+
           </div>
           <div style={{ padding: '16px 20px', borderTop: '1px solid #f4f4f5', display: 'flex', justifyContent: 'flex-end' }}>
             <button onClick={handleSave} disabled={saving} style={{
@@ -320,6 +346,68 @@ export default function SettingsClient({ initialSettings }: Props) {
             </div>
           </div>
 
+          {saveBtn}
+        </div>
+      )}
+
+      {/* 存储 tab */}
+      {activeTab === 'storage' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #f0f0f0', padding: '24px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+              <p style={sectionLabel}>存储驱动</p>
+
+              <div>
+                <label style={labelStyle}>驱动类型</label>
+                <select value={val('storage.driver') || 'r2'} onChange={e => update('storage.driver', e.target.value)}
+                  style={{ ...field, cursor: 'pointer' }}>
+                  <option value="r2">Cloudflare R2（默认）</option>
+                  <option value="s3">S3 兼容存储（B2 / AWS / 自建）</option>
+                </select>
+              </div>
+
+              {(val('storage.driver') || 'r2') === 's3' && (
+                <>
+                  <div style={{ height: '1px', background: '#f4f4f5' }} />
+                  <p style={sectionLabel}>S3 配置</p>
+
+                  <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '12px 14px' }}>
+                    <p style={{ fontSize: '12px', color: '#92400e', margin: 0, lineHeight: 1.6 }}>
+                      访问凭证（Access Key / Secret）需配置为 Cloudflare Pages Secrets：<br />
+                      <code style={{ fontFamily: 'monospace', background: '#fef3c7', padding: '1px 4px', borderRadius: '3px' }}>S3_ACCESS_KEY_ID</code>
+                      {' 和 '}
+                      <code style={{ fontFamily: 'monospace', background: '#fef3c7', padding: '1px 4px', borderRadius: '3px' }}>S3_SECRET_ACCESS_KEY</code>
+                    </p>
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>Endpoint URL</label>
+                    <input type="url" placeholder="https://s3.us-west-002.backblazeb2.com" {...inp('storage.s3.endpoint')} />
+                    <p style={hintStyle}>存储服务的 API 端点，B2 示例：https://s3.us-west-002.backblazeb2.com</p>
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>Bucket 名称</label>
+                    <input type="text" placeholder="my-media-bucket" {...inp('storage.s3.bucket')} />
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>Region</label>
+                    <input type="text" placeholder="auto" {...inp('storage.s3.region')} />
+                    <p style={hintStyle}>B2 / R2 填 auto，AWS 填具体区域如 us-east-1</p>
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>公开访问 URL 前缀</label>
+                    <input type="url" placeholder="https://cdn.example.com" {...inp('storage.s3.public_url')} />
+                    <p style={hintStyle}>文件上传后用于拼接公开访问地址，通常是 CDN 域名或 Bucket 的公开 URL</p>
+                  </div>
+                </>
+              )}
+
+            </div>
+          </div>
           {saveBtn}
         </div>
       )}

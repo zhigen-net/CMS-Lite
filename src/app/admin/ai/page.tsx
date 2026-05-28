@@ -13,13 +13,13 @@ export default async function AIPage() {
   ])
 
   return (
-    <div style={{ padding: '32px 32px 48px' }}>
+    <div style={{ padding: '32px 40px 48px', maxWidth: 1100, margin: '0 auto' }}>
       <div style={{ marginBottom: '28px' }}>
         <h1 style={{ fontSize: '18px', fontWeight: 600, color: '#18181b', letterSpacing: '-0.02em', margin: 0 }}>
           AI 运营
         </h1>
         <p style={{ fontSize: '13px', color: '#71717a', marginTop: '4px' }}>
-          智能内容生成 · 自动 SEO 优化 · 提示词定制 · 模型配置
+          内容 Agent · 审核 Agent · 发布计划 · 提示词
         </p>
       </div>
 

@@ -3,8 +3,12 @@ import { getTagsWithCount, createTag } from '@/lib/db'
 import { getCurrentUser, requireAdmin } from '@/lib/auth'
 import { generateId, slugify } from '@/lib/utils'
 
-export async function GET() {
+export async function GET(request: Request) {
   const { env } = getCloudflareContext()
+  const user = await getCurrentUser(request, env)
+  const authError = requireAdmin(user)
+  if (authError) return authError
+
   const tags = await getTagsWithCount(env.DB)
   return Response.json(tags)
 }

@@ -8,7 +8,7 @@ export default async function MediaPage() {
   const { items, pagination } = await getMediaList(env.DB, 1, 60)
 
   return (
-    <div style={{ padding: '32px 32px 48px' }}>
+    <div style={{ padding: '32px 40px 48px', maxWidth: 1100, margin: '0 auto' }}>
       <div style={{ marginBottom: '24px' }}>
         <h1 style={{ fontSize: '18px', fontWeight: 600, color: '#18181b', letterSpacing: '-0.02em', margin: 0 }}>
           媒体库

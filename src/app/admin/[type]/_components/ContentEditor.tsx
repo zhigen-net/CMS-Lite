@@ -100,6 +100,8 @@ export default function ContentEditor({ contentType, initialContent }: Props) {
   const [coverPickerOpen, setCoverPickerOpen] = useState(false)
   const [pickerMedia, setPickerMedia] = useState<{ id: string; url: string; filename: string; mime_type: string }[]>([])
   const [pickerLoading, setPickerLoading] = useState(false)
+  const [customFields, setCustomFields] = useState<Record<string, unknown>>(initialContent?.fields ?? {})
+  const [fieldImagePicker, setFieldImagePicker] = useState<string | null>(null) // field key being picked
   const tagInputRef = useRef<HTMLInputElement>(null)
   const coverInputRef = useRef<HTMLInputElement>(null)
   const isDirtyRef = useRef(false)
@@ -138,7 +140,7 @@ export default function ContentEditor({ contentType, initialContent }: Props) {
 
   useEffect(() => {
     isDirtyRef.current = true
-  }, [title, slug, content, excerpt, status, metaTitle, metaDesc, categoryIds, tags, coverImage, parentId, sortOrder])
+  }, [title, slug, content, excerpt, status, metaTitle, metaDesc, categoryIds, tags, coverImage, parentId, sortOrder, customFields])
 
   useEffect(() => {
     if (!isEdit) return
@@ -220,6 +222,7 @@ export default function ContentEditor({ contentType, initialContent }: Props) {
         category_ids: categoryIds,
         tags,
         cover_image: coverImage ?? null,
+        fields: customFields,
       }
       if (contentType.id === 'page') {
         body.parent_id = parentId
@@ -943,6 +946,116 @@ export default function ContentEditor({ contentType, initialContent }: Props) {
               </div>
             </div>
           </div>
+
+          {/* Custom fields */}
+          {contentType.fields?.length > 0 && (
+            <>
+              <div style={{ height: '1px', background: '#f4f4f5' }} />
+              <div>
+                <p style={{ ...labelStyle, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>自定义字段</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {contentType.fields.map(field => {
+                    const val = customFields[field.key]
+                    const setVal = (v: unknown) => setCustomFields(prev => ({ ...prev, [field.key]: v }))
+                    return (
+                      <div key={field.key}>
+                        <label style={labelStyle}>
+                          {field.label}
+                          {field.required && <span style={{ color: '#ef4444', marginLeft: '2px' }}>*</span>}
+                        </label>
+                        {(field.type === 'text' || field.type === 'url') && (
+                          <input type={field.type === 'url' ? 'url' : 'text'} value={(val as string) ?? ''} onChange={e => setVal(e.target.value)} style={{ ...inputBase, fontSize: '12px' }} />
+                        )}
+                        {field.type === 'textarea' && (
+                          <textarea value={(val as string) ?? ''} onChange={e => setVal(e.target.value)} rows={3} style={{ ...textareaBase, fontSize: '12px' }} />
+                        )}
+                        {field.type === 'number' && (
+                          <input type="number" value={(val as number) ?? ''} onChange={e => setVal(e.target.value === '' ? '' : Number(e.target.value))} style={{ ...inputBase, fontSize: '12px', width: '120px' }} />
+                        )}
+                        {field.type === 'boolean' && (
+                          <button type="button" onClick={() => setVal(!val)} style={{ width: '40px', height: '22px', borderRadius: '11px', border: 'none', background: val ? '#18181b' : '#d4d4d8', cursor: 'pointer', position: 'relative', transition: 'background 0.2s' }}>
+                            <span style={{ position: 'absolute', top: '3px', left: val ? '21px' : '3px', width: '16px', height: '16px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+                          </button>
+                        )}
+                        {field.type === 'select' && (
+                          <select value={(val as string) ?? ''} onChange={e => setVal(e.target.value)} style={{ ...inputBase, fontSize: '12px', cursor: 'pointer' }}>
+                            <option value="">— 请选择 —</option>
+                            {field.options?.map(o => <option key={o} value={o}>{o}</option>)}
+                          </select>
+                        )}
+                        {field.type === 'multiselect' && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            {field.options?.map(o => {
+                              const arr = (val as string[]) ?? []
+                              return (
+                                <label key={o} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                                  <input type="checkbox" checked={arr.includes(o)} onChange={() => setVal(arr.includes(o) ? arr.filter(x => x !== o) : [...arr, o])} style={{ accentColor: '#18181b' }} />
+                                  {o}
+                                </label>
+                              )
+                            })}
+                          </div>
+                        )}
+                        {field.type === 'date' && (
+                          <input type="date" value={(val as string) ?? ''} onChange={e => setVal(e.target.value)} style={{ ...inputBase, fontSize: '12px', width: 'auto' }} />
+                        )}
+                        {field.type === 'image' && (
+                          <div>
+                            {val ? (
+                              <div style={{ position: 'relative', borderRadius: '7px', overflow: 'hidden', border: '1px solid #e4e4e7', marginBottom: '4px' }}>
+                                <img src={val as string} alt="" style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', display: 'block' }} />
+                                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0)', transition: 'background 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.45)'; Array.from((e.currentTarget as HTMLElement).children).forEach(c => ((c as HTMLElement).style.opacity = '1')) }}
+                                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0)'; Array.from((e.currentTarget as HTMLElement).children).forEach(c => ((c as HTMLElement).style.opacity = '0')) }}>
+                                  <button onClick={async () => { setFieldImagePicker(field.key); if (!pickerMedia.length) { setPickerLoading(true); try { const r = await fetch('/api/media?page=1'); if (r.ok) { const d = await r.json() as { items: typeof pickerMedia }; setPickerMedia(d.items.filter(m => m.mime_type.startsWith('image/'))) } } finally { setPickerLoading(false) } } }} style={{ opacity: 0, transition: 'opacity 0.15s', padding: '5px 10px', fontSize: '11px', fontWeight: 600, background: '#fff', color: '#18181b', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>更换</button>
+                                  <button onClick={() => setVal('')} style={{ opacity: 0, transition: 'opacity 0.15s', padding: '5px 10px', fontSize: '11px', fontWeight: 600, background: 'rgba(239,68,68,0.9)', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>移除</button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button onClick={async () => { setFieldImagePicker(field.key); if (!pickerMedia.length) { setPickerLoading(true); try { const r = await fetch('/api/media?page=1'); if (r.ok) { const d = await r.json() as { items: typeof pickerMedia }; setPickerMedia(d.items.filter(m => m.mime_type.startsWith('image/'))) } } finally { setPickerLoading(false) } } }} style={{ width: '100%', aspectRatio: '16/9', border: '1.5px dashed #d4d4d8', borderRadius: '7px', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', color: '#a1a1aa', fontSize: '11px', boxSizing: 'border-box' }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                                选择图片
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Field image picker modal */}
+          {fieldImagePicker && (
+            <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={() => setFieldImagePicker(null)}>
+              <div style={{ background: '#fff', borderRadius: '14px', width: '100%', maxWidth: '560px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid #e4e4e7' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 600, color: '#18181b' }}>选择图片</span>
+                  <button onClick={() => setFieldImagePicker(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#71717a', lineHeight: 0, padding: '4px' }}><XIcon size={16} /></button>
+                </div>
+                <div style={{ flex: 1, overflowY: 'auto', padding: '14px' }}>
+                  {pickerLoading ? (
+                    <div style={{ textAlign: 'center', padding: '3rem 0', color: '#a1a1aa', fontSize: '13px' }}>加载中…</div>
+                  ) : pickerMedia.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '3rem 0', color: '#a1a1aa', fontSize: '13px' }}>媒体库暂无图片</div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '8px' }}>
+                      {pickerMedia.map(m => (
+                        <div key={m.id} onClick={() => { setCustomFields(prev => ({ ...prev, [fieldImagePicker]: m.url })); setFieldImagePicker(null) }} style={{ aspectRatio: '1', borderRadius: '8px', overflow: 'hidden', cursor: 'pointer', border: '2px solid #e4e4e7', transition: 'border-color 0.1s' }}
+                          onMouseEnter={e => ((e.currentTarget as HTMLElement).style.borderColor = '#18181b')}
+                          onMouseLeave={e => ((e.currentTarget as HTMLElement).style.borderColor = '#e4e4e7')}>
+                          <img src={m.url} alt={m.filename} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
       </aside>
     </div>

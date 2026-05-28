@@ -165,7 +165,7 @@ export default function AccountClient({ user, initialApiKeys }: { user: User; in
   ] as const
 
   return (
-    <div style={{ padding: '28px 32px 48px', maxWidth: 860, margin: '0 auto' }}>
+    <div style={{ padding: '32px 40px 48px', maxWidth: 720, margin: '0 auto' }}>
       <div style={{ marginBottom: '24px' }}>
         <h1 style={{ fontSize: '18px', fontWeight: 600, color: '#18181b', margin: 0 }}>账户设置</h1>
         <p style={{ fontSize: '13px', color: '#71717a', marginTop: '4px' }}>{user.email}</p>
