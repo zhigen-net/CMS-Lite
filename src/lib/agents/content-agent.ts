@@ -191,16 +191,27 @@ async function runPlan(
         og_image: null, ai_generated: true, ai_reviewed: false,
       })
 
-      step = '分类&标签关联'
+      // 文章已保存成功，即使下面的分类/标签关联失败也不应丢失这篇文章的生成记录
+      // （分类可能已被删除等原因导致外键约束失败，分类和标签各自独立容错）
+      let linkedCategoryId = plan.categoryId
       if (plan.categoryId) {
-        await setContentCategories(db, id, [plan.categoryId])
+        try {
+          await setContentCategories(db, id, [plan.categoryId])
+        } catch (catErr) {
+          linkedCategoryId = null
+          errors.push({ topic, step: '分类关联', error: catErr instanceof Error ? catErr.message : String(catErr) })
+        }
       }
       if (tagLinks.length > 0) {
-        // tags 已由 ensureTagsAndGetSlugs 创建，直接关联
-        await setContentTags(db, id, seo.keywords)
+        try {
+          // tags 已由 ensureTagsAndGetSlugs 创建，直接关联
+          await setContentTags(db, id, seo.keywords)
+        } catch (tagErr) {
+          errors.push({ topic, step: '标签关联', error: tagErr instanceof Error ? tagErr.message : String(tagErr) })
+        }
       }
 
-      generated.push({ id, title: article.title, slug, status: shared.autoPublish ? 'published' : 'draft', coverGenerated, categoryId: plan.categoryId })
+      generated.push({ id, title: article.title, slug, status: shared.autoPublish ? 'published' : 'draft', coverGenerated, categoryId: linkedCategoryId })
       shared.existingTitles.push(article.title)
     } catch (err) {
       errors.push({ topic, step, error: err instanceof Error ? err.message : String(err) })

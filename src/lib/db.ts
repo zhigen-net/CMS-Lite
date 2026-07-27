@@ -286,6 +286,22 @@ export async function updateCategory(db: D1Database, id: string, data: { name?: 
 export async function deleteCategory(db: D1Database, id: string): Promise<void> {
   await db.prepare('DELETE FROM content_categories WHERE category_id = ?').bind(id).run()
   await db.prepare('DELETE FROM categories WHERE id = ?').bind(id).run()
+
+  // 清理 AI 内容计划中对该分类的引用，避免定时任务/手动生成时因分类已删除
+  // 而在关联分类步骤触发外键约束失败
+  const row = await db.prepare('SELECT value FROM settings WHERE key = ?').bind('ai.content.categoryPlans').first<{ value: string }>()
+  if (row) {
+    try {
+      const plans = JSON.parse(row.value) as { categoryId: string | null }[]
+      const filtered = plans.filter(p => p.categoryId !== id)
+      if (filtered.length !== plans.length) {
+        await db.prepare('UPDATE settings SET value = ?, updated_at = unixepoch() WHERE key = ?')
+          .bind(JSON.stringify(filtered), 'ai.content.categoryPlans').run()
+      }
+    } catch {
+      // 忽略无法解析的历史设置值
+    }
+  }
 }
 
 export async function updateCategorySortOrders(db: D1Database, orders: { id: string; sort_order: number }[]): Promise<void> {
