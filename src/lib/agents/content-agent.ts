@@ -1,5 +1,5 @@
 import { generateArticle, generateSEOMeta, generateText, DEFAULT_MODELS } from '@/lib/ai'
-import { getContents, getContentBySlug, createContent, setContentCategories, setContentTags, ensureTagsAndGetSlugs, pruneInvalidCategoryPlans } from '@/lib/db'
+import { getContents, getContentBySlug, createContent, setContentCategories, setContentTags, ensureTagsAndGetSlugs, pruneInvalidCategoryPlans, categoryExists } from '@/lib/db'
 import { getSiteSettings } from '@/lib/config'
 import { saveCoverImage, injectArticleImages } from '@/lib/image'
 import { generateId, slugify } from '@/lib/utils'
@@ -191,15 +191,20 @@ async function runPlan(
         og_image: null, ai_generated: true, ai_reviewed: false,
       })
 
-      // 文章已保存成功，即使下面的分类/标签关联失败也不应丢失这篇文章的生成记录
-      // （分类可能已被删除等原因导致外键约束失败，分类和标签各自独立容错）
-      let linkedCategoryId = plan.categoryId
+      // 文章已保存成功，即使下面的分类/标签关联失败也不应丢失这篇文章的生成记录。
+      // 分类可能已被删除（不同调用方读取到的 categoryPlans 快照新旧不一，仅靠
+      // 调用方提前清理无法保证一定生效），所以在关联前直接校验分类是否存在
+      let linkedCategoryId: string | null = null
       if (plan.categoryId) {
-        try {
-          await setContentCategories(db, id, [plan.categoryId])
-        } catch (catErr) {
-          linkedCategoryId = null
-          errors.push({ topic, step: '分类关联', error: catErr instanceof Error ? catErr.message : String(catErr) })
+        if (await categoryExists(db, plan.categoryId)) {
+          try {
+            await setContentCategories(db, id, [plan.categoryId])
+            linkedCategoryId = plan.categoryId
+          } catch (catErr) {
+            errors.push({ topic, step: '分类关联', error: catErr instanceof Error ? catErr.message : String(catErr) })
+          }
+        } else {
+          errors.push({ topic, step: '分类关联', error: `分类 ${plan.categoryId} 不存在（可能已被删除），已跳过关联` })
         }
       }
       if (tagLinks.length > 0) {

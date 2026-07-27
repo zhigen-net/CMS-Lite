@@ -3,7 +3,7 @@ import { getSiteSettings } from '@/lib/config'
 import { runAgent } from '@/lib/agents'
 import type { AgentType } from '@/lib/agents'
 import type { ScheduledPlan } from '@/lib/agents/base'
-import { listUsers } from '@/lib/db'
+import { listUsers, pruneInvalidCategoryPlans } from '@/lib/db'
 import type { CategoryPlan } from '@/types'
 
 function weightedPick(plans: CategoryPlan[]): CategoryPlan {
@@ -53,11 +53,13 @@ export async function GET(request: Request) {
 
   // Schedule mode: apply daily cap + random count + weighted category selection
   if (mode === 'schedule' && agent === 'content') {
-    const runMin = Math.max(1, Number(settings['ai.schedule.runMin'] ?? 1))
-    const runMax = Math.max(runMin, Number(settings['ai.schedule.runMax'] ?? 1))
-    const dailyMax = Math.max(1, Number(settings['ai.schedule.dailyMax'] ?? 10))
-    const categoryPlans = (settings['ai.content.categoryPlans'] as CategoryPlan[]) ?? []
-    const siteTopics = (settings['ai.content.siteTopics'] as string) || ''
+    await pruneInvalidCategoryPlans(env.DB)
+    const freshSettings = await getSiteSettings(env.DB)
+    const runMin = Math.max(1, Number(freshSettings['ai.schedule.runMin'] ?? 1))
+    const runMax = Math.max(runMin, Number(freshSettings['ai.schedule.runMax'] ?? 1))
+    const dailyMax = Math.max(1, Number(freshSettings['ai.schedule.dailyMax'] ?? 10))
+    const categoryPlans = (freshSettings['ai.content.categoryPlans'] as CategoryPlan[]) ?? []
+    const siteTopics = (freshSettings['ai.content.siteTopics'] as string) || ''
 
     const todayCount = await countPublishedToday(env.DB)
     if (todayCount >= dailyMax) {
