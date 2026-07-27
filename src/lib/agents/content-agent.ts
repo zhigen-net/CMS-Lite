@@ -1,5 +1,5 @@
 import { generateArticle, generateSEOMeta, generateText, DEFAULT_MODELS } from '@/lib/ai'
-import { getContents, getContentBySlug, createContent, setContentCategories, setContentTags, ensureTagsAndGetSlugs } from '@/lib/db'
+import { getContents, getContentBySlug, createContent, setContentCategories, setContentTags, ensureTagsAndGetSlugs, pruneInvalidCategoryPlans } from '@/lib/db'
 import { getSiteSettings } from '@/lib/config'
 import { saveCoverImage, injectArticleImages } from '@/lib/image'
 import { generateId, slugify } from '@/lib/utils'
@@ -224,6 +224,7 @@ async function runPlan(
 export async function runContentAgent({ db, env, taskId, userId, scheduledPlan }: AgentRunOptions): Promise<AgentResult> {
   void taskId
 
+  await pruneInvalidCategoryPlans(db)
   const settings = await getSiteSettings(db)
 
   const siteName       = (settings['site.name'] as string) || '我的站点'

@@ -15,7 +15,7 @@ import { runAgent } from '@/lib/agents'
 import type { AgentType } from '@/lib/agents'
 import type { ScheduledPlan } from '@/lib/agents/base'
 import { z } from 'zod'
-import { listUsers, publishScheduled } from '@/lib/db'
+import { listUsers, publishScheduled, pruneInvalidCategoryPlans } from '@/lib/db'
 import { getSiteSettings } from '@/lib/config'
 import type { CategoryPlan } from '@/types'
 
@@ -72,6 +72,7 @@ export async function POST(request: Request) {
 
   for (const agent of agents) {
     if (agent === 'content') {
+      await pruneInvalidCategoryPlans(env.DB)
       const settings = await getSiteSettings(env.DB)
       const scheduleEnabled = Boolean(settings['ai.schedule.enabled'])
 

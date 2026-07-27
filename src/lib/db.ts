@@ -252,6 +252,34 @@ export async function getCategories(db: D1Database, contentType: string): Promis
   return rows.results
 }
 
+export async function categoryExists(db: D1Database, id: string): Promise<boolean> {
+  const row = await db.prepare('SELECT 1 FROM categories WHERE id = ?').bind(id).first()
+  return !!row
+}
+
+// 运行期自愈：清理 ai.content.categoryPlans 中指向已不存在分类的计划项
+// （无论该分类是被删除、被外部/历史操作清空，还是 deleteCategory 修复上线前就已残留）
+export async function pruneInvalidCategoryPlans(db: D1Database): Promise<void> {
+  const row = await db.prepare('SELECT value FROM settings WHERE key = ?').bind('ai.content.categoryPlans').first<{ value: string }>()
+  if (!row) return
+  let plans: { categoryId: string | null }[]
+  try {
+    plans = JSON.parse(row.value)
+  } catch {
+    return
+  }
+  if (!Array.isArray(plans) || plans.length === 0) return
+
+  const kept = []
+  for (const plan of plans) {
+    if (!plan.categoryId || await categoryExists(db, plan.categoryId)) kept.push(plan)
+  }
+  if (kept.length !== plans.length) {
+    await db.prepare('UPDATE settings SET value = ?, updated_at = unixepoch() WHERE key = ?')
+      .bind(JSON.stringify(kept), 'ai.content.categoryPlans').run()
+  }
+}
+
 export type CategoryWithCount = Category & { count: number }
 
 export async function getCategoriesWithCount(db: D1Database, contentType: string): Promise<CategoryWithCount[]> {
