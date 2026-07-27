@@ -1,5 +1,5 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
-import { getContents, createContent, setContentTags, setContentCategories, saveContentFields } from '@/lib/db'
+import { getContents, getContentBySlug, createContent, setContentTags, setContentCategories, saveContentFields } from '@/lib/db'
 import { getCurrentUser, requireAdmin } from '@/lib/auth'
 import { generateId, slugify } from '@/lib/utils'
 import { z } from 'zod'
@@ -59,7 +59,18 @@ export async function POST(request: Request) {
 
   const data = parsed.data
   const id = generateId()
-  const slug = data.slug || slugify(data.title) || id
+
+  let slug: string
+  if (data.slug) {
+    // 用户手动指定了 slug，冲突时应报错而不是静默改写
+    if (await getContentBySlug(env.DB, data.type, data.slug)) {
+      return Response.json({ error: 'slug 已被占用，请更换' }, { status: 409 })
+    }
+    slug = data.slug
+  } else {
+    const autoSlug = slugify(data.title) || id
+    slug = (await getContentBySlug(env.DB, data.type, autoSlug)) ? `${autoSlug}-${id.slice(0, 6)}` : autoSlug
+  }
 
   await createContent(env.DB, {
     id,

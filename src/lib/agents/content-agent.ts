@@ -1,5 +1,5 @@
 import { generateArticle, generateSEOMeta, generateText, DEFAULT_MODELS } from '@/lib/ai'
-import { getContents, createContent, setContentCategories, setContentTags, ensureTagsAndGetSlugs } from '@/lib/db'
+import { getContents, getContentBySlug, createContent, setContentCategories, setContentTags, ensureTagsAndGetSlugs } from '@/lib/db'
 import { getSiteSettings } from '@/lib/config'
 import { saveCoverImage, injectArticleImages } from '@/lib/image'
 import { generateId, slugify } from '@/lib/utils'
@@ -170,7 +170,12 @@ async function runPlan(
       step = '保存文章'
       const id = generateId()
       const rawSlug = slugify(article.title).replace(/[^\x00-\x7F]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '')
-      const slug = rawSlug || id
+      // 中文标题去除非 ASCII 字符后可能退化为极短的通用词（如 "d"、"ivf"），
+      // 与历史文章的 slug 撞车，因此需要检测并加上唯一后缀
+      let slug = rawSlug || id
+      if (rawSlug && await getContentBySlug(db, 'post', slug)) {
+        slug = `${rawSlug}-${id.slice(0, 6)}`
+      }
       const now = Math.floor(Date.now() / 1000)
 
       await createContent(db, {
