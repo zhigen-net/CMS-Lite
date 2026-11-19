@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getSiteSettings } from '@/lib/config'
 import { loadTheme } from '@/lib/theme-loader'
+import { siteBaseUrl, openGraphFor } from '@/lib/seo'
 import type { SiteSettings } from '@/types'
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -11,7 +12,10 @@ export async function generateMetadata(): Promise<Metadata> {
     const { env } = getCloudflareContext()
     const s = await getSiteSettings(env.DB)
     const verification = s['seo.googleVerification'] as string | undefined
+    const base = await siteBaseUrl(s)
     return {
+      ...(base ? { metadataBase: new URL(base) } : {}),
+      openGraph: openGraphFor(s, {}),
       title: {
         template: (s['seo.titleTemplate'] as string) || `%s | ${s['site.name']}`,
         default: s['site.name'] as string,

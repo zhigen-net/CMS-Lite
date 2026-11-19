@@ -1,5 +1,5 @@
 import { generateArticle, generateSEOMeta, generateText, DEFAULT_MODELS } from '@/lib/ai'
-import { getContents, getContentBySlug, createContent, setContentCategories, setContentTags, ensureTagsAndGetSlugs, pruneInvalidCategoryPlans, categoryExists } from '@/lib/db'
+import { getContents, getContentBySlug, createContent, setContentCategories, setContentTags, ensureTagsAndGetSlugs, pruneInvalidCategoryPlans, categoryExists, getTopTags } from '@/lib/db'
 import { getSiteSettings } from '@/lib/config'
 import { saveCoverImage, injectArticleImages } from '@/lib/image'
 import { generateId, slugify } from '@/lib/utils'
@@ -28,7 +28,7 @@ function injectTagLinks(content: string, tags: { name: string; slug: string }[])
       const openBrackets = (before.match(/\[/g) ?? []).length
       const closeBrackets = (before.match(/\]/g) ?? []).length
       if (openBrackets > closeBrackets) continue
-      result = result.slice(0, idx) + `[${tag.name}](/tag/${tag.slug})` + result.slice(idx + tag.name.length)
+      result = result.slice(0, idx) + `[${tag.name}](/tag/${encodeURIComponent(tag.slug)})` + result.slice(idx + tag.name.length)
       used.add(tag.name)
     }
     return result
@@ -42,6 +42,8 @@ const DEFAULT_TOPIC_PROMPT = `你是一个内容策略师，正在为名为"{{si
 {{existingTitles}}
 
 请建议 {{count}} 个全新的、有吸引力的文章选题。
+要求：选题角度多样，标题自然、简洁（30 字以内），像真人编辑写的；不要套用同一种句式
+（例如「X 与 Y 的关系：为某某提供的……指南」），不要和已有标题用相同的开头或结构。
 直接返回 JSON 数组，不要其他内容：["选题1", "选题2", ...]`
 
 export async function suggestTopics(
@@ -89,7 +91,7 @@ async function runPlan(
     bodyImageSource: 'none' | 'unsplash' | 'ai'; siteTopics: string; targetAudience: string; avoidTopics: string
     topicModel: string; contentModel: string; seoModel: string
     topicPrompt: string; systemPrompt: string; userPrompt: string
-    existingTitles: string[]; userId?: string
+    existingTitles: string[]; existingTags: string[]; userId?: string
   }
 ) {
   const generated: { id: string; title: string; slug: string; status: string; coverGenerated: boolean; categoryId: string | null }[] = []
@@ -118,7 +120,7 @@ async function runPlan(
       })
 
       step = 'SEO生成'
-      const seo = await generateSEOMeta(env, { title: article.title, content: article.content }, shared.seoModel)
+      const seo = await generateSEOMeta(env, { title: article.title, content: article.content }, shared.seoModel, { existingTags: shared.existingTags })
 
       // 正文配图
       step = '正文配图'
@@ -169,7 +171,8 @@ async function runPlan(
 
       step = '保存文章'
       const id = generateId()
-      const rawSlug = slugify(article.title).replace(/[^\x00-\x7F]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '')
+      // 优先用 AI 给出的英文 slug（可读的网址）；没有时退回到标题去掉非 ASCII 字符
+      const rawSlug = seo.slug || slugify(article.title).replace(/[^\x00-\x7F]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '')
       // 中文标题去除非 ASCII 字符后可能退化为极短的通用词（如 "d"、"ivf"），
       // 与历史文章的 slug 撞车，因此需要检测并加上唯一后缀
       let slug = rawSlug || id
@@ -253,12 +256,14 @@ export async function runContentAgent({ db, env, taskId, userId, scheduledPlan }
 
   const { items: recent } = await getContents(db, { type: 'post', pageSize: 50 })
   const existingTitles = recent.map(p => p.title)
+  // 已有的常用标签：生成关键词时优先复用，避免每篇文章都造一批新标签
+  const existingTags = (await getTopTags(db, 80)).map(t => t.name)
 
   const shared = {
     siteName, writingStyle, length, autoPublish,
     imageSource, unsplashKey, bodyImageSource, siteTopics,
     targetAudience, avoidTopics, topicModel, contentModel, seoModel,
-    topicPrompt, systemPrompt, userPrompt, existingTitles, userId,
+    topicPrompt, systemPrompt, userPrompt, existingTitles, existingTags, userId,
   }
 
   const allGenerated: { id: string; title: string; slug: string; status: string; coverGenerated: boolean; categoryId: string | null }[] = []

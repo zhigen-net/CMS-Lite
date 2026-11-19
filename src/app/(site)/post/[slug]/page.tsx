@@ -4,6 +4,7 @@ import { getSiteSettings } from '@/lib/config'
 import { loadTheme } from '@/lib/theme-loader'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import { alternatesFor, openGraphFor } from '@/lib/seo'
 import type { Form } from '@/types'
 import { marked, type Tokens } from 'marked'
 import { preprocessFormShortcodes, processFormEmbeds } from '@/lib/formEmbed'
@@ -23,12 +24,28 @@ interface Props { params: Promise<{ slug: string }> }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const { env } = getCloudflareContext()
-  const post = await getContentBySlugWithMeta(env.DB, 'post', slug)
+  const decoded = decodeURIComponent(slug)
+  const [post, settings] = await Promise.all([
+    getContentBySlugWithMeta(env.DB, 'post', decoded),
+    getSiteSettings(env.DB),
+  ])
   if (!post) return {}
+  const title = post.meta_title || post.title
+  const description = post.meta_description || post.excerpt || undefined
+  const image = post.og_image || post.cover_image
   return {
-    title: post.meta_title || post.title,
-    description: post.meta_description || post.excerpt || undefined,
-    openGraph: post.og_image ? { images: [post.og_image] } : undefined,
+    title,
+    description,
+    alternates: alternatesFor(`/post/${post.slug}`),
+    openGraph: openGraphFor(settings, {
+      type: 'article',
+      title,
+      description,
+      url: `/post/${post.slug}`,
+      ...(image ? { images: [image] } : {}),
+      ...(post.published_at ? { publishedTime: new Date(post.published_at * 1000).toISOString() } : {}),
+      ...(post.updated_at ? { modifiedTime: new Date(post.updated_at * 1000).toISOString() } : {}),
+    }),
   }
 }
 

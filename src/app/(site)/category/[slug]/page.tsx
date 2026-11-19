@@ -4,6 +4,7 @@ import { getSiteSettings } from '@/lib/config'
 import { loadTheme } from '@/lib/theme-loader'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import { alternatesFor } from '@/lib/seo'
 
 const PAGE_SIZE = 12
 
@@ -12,14 +13,22 @@ interface Props {
   searchParams: Promise<{ page?: string }>
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { slug } = await params
+  const { page: pageStr } = await searchParams
+  const page = Math.max(1, parseInt(pageStr ?? '1', 10) || 1)
   const { env } = getCloudflareContext()
-  const category = await getCategoryBySlug(env.DB, 'post', slug)
+  const [category, s] = await Promise.all([
+    getCategoryBySlug(env.DB, 'post', decodeURIComponent(slug)),
+    getSiteSettings(env.DB),
+  ])
   if (!category) return {}
+  const siteName = (s['site.name'] as string) || ''
   return {
-    title: `${category.name} · 分类`,
-    description: category.description ?? undefined,
+    title: `${category.name} · 分类${page > 1 ? ` - 第 ${page} 页` : ''}`,
+    // 分类没填描述时生成一句，不再留空
+    description: category.description || `${siteName}「${category.name}」分类下的全部文章。`,
+    alternates: alternatesFor(`/category/${category.slug}`, page),
   }
 }
 

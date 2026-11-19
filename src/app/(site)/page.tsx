@@ -4,22 +4,27 @@ import { getSiteSettings } from '@/lib/config'
 import { loadTheme } from '@/lib/theme-loader'
 import type { Category, Tag } from '@/types'
 import type { Metadata } from 'next'
+import { alternatesFor, openGraphFor } from '@/lib/seo'
 
 const PAGE_SIZE = 12
 
 interface Props { searchParams: Promise<{ page?: string }> }
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   try {
     const { env } = getCloudflareContext()
+    const { page: pageStr } = await searchParams
+    const page = Math.max(1, parseInt(pageStr ?? '1', 10) || 1)
     const s = await getSiteSettings(env.DB)
     const title = s['seo.home.title'] || s['site.name'] || ''
     const description = s['seo.home.description'] || s['site.description'] || ''
     const ogImage = s['seo.home.ogImage'] || s['seo.defaultOgImage'] || ''
     return {
-      title,
+      // 首页标题不套标题模板（模板一般是「%s | 站点名」，首页会变成「站点名 | 站点名」）
+      title: { absolute: page > 1 ? `${title} - 第 ${page} 页` : title },
       description,
-      ...(ogImage ? { openGraph: { images: [ogImage] } } : {}),
+      alternates: alternatesFor('/', page),
+      openGraph: openGraphFor(s, { title, description, url: '/', ...(ogImage ? { images: [ogImage] } : {}) }),
     }
   } catch { return {} }
 }

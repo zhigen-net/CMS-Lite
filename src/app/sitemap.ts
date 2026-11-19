@@ -30,7 +30,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     for (const post of posts) {
       entries.push({
-        url: url(`/post/${post.slug}`),
+        url: url(`/post/${encodeURIComponent(post.slug)}`),
         lastModified: new Date((post.updated_at || post.published_at || 0) * 1000),
         changeFrequency: 'weekly',
         priority: 0.8,
@@ -39,7 +39,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     for (const page of pages) {
       entries.push({
-        url: url(`/${page.slug}`),
+        url: url(`/${encodeURIComponent(page.slug)}`),
         lastModified: new Date((page.updated_at || 0) * 1000),
         changeFrequency: 'monthly',
         priority: 0.6,
@@ -47,11 +47,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
 
     for (const cat of categories) {
-      entries.push({ url: url(`/category/${cat.slug}`), changeFrequency: 'weekly', priority: 0.5 })
+      entries.push({ url: url(`/category/${encodeURIComponent(cat.slug)}`), changeFrequency: 'weekly', priority: 0.5 })
     }
 
     for (const tag of tags) {
-      entries.push({ url: url(`/tag/${tag.slug}`), changeFrequency: 'weekly', priority: 0.4 })
+      entries.push({ url: url(`/tag/${encodeURIComponent(tag.slug)}`), changeFrequency: 'weekly', priority: 0.4 })
     }
 
     return entries

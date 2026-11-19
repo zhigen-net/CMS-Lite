@@ -136,22 +136,29 @@ export async function generateArticle(
   return { title, content, excerpt, metaDescription }
 }
 
+/** 每篇文章最多关联的标签数：标签太多会产生大量只有一篇文章的标签页（内容单薄，影响搜索收录） */
+export const MAX_TAGS_PER_POST = 5
+
 export async function generateSEOMeta(
   env: CloudflareEnv,
   content: { title: string; content: string },
-  model?: string
-): Promise<{ metaTitle: string; metaDescription: string; keywords: string[] }> {
+  model?: string,
+  options: { existingTags?: string[] } = {}
+): Promise<{ metaTitle: string; metaDescription: string; keywords: string[]; slug: string }> {
+  const existing = (options.existingTags ?? []).slice(0, 80)
   const prompt = `根据以下文章生成SEO信息：
 标题：${content.title}
 正文摘要：${content.content.slice(0, 500)}
-
+${existing.length ? `\n站内已有的标签（关键词优先从这里选，确实没有合适的才新建）：${existing.join('，')}\n` : ''}
 严格按以下格式输出：
 ===METATITLE===
 （SEO标题，60字以内，一行）
 ===METADESC===
 （SEO描述，155字以内，一行）
 ===KEYWORDS===
-（关键词，用逗号分隔，一行）
+（3 到 ${MAX_TAGS_PER_POST} 个关键词，用逗号分隔，一行；用通用、常见的词，不要用整句或很长的短语）
+===SLUG===
+（文章网址用的英文短语：3 到 8 个小写英文单词，用连字符连接，概括文章主题，例如 frozen-embryo-transfer-success-rates）
 ===END===`
 
   const raw = await generateText(env, prompt, undefined, 512, model ?? DEFAULT_MODELS.seo)
@@ -164,11 +171,19 @@ export async function generateSEOMeta(
 
   const metaTitle = extract('METATITLE', 'METADESC') || content.title
   const metaDescription = extract('METADESC', 'KEYWORDS') || extract('METADESC', 'END') || extractToEnd('METADESC')
-  const keywordsRaw = extract('KEYWORDS', 'END') || extractToEnd('KEYWORDS')
+  const keywordsRaw = extract('KEYWORDS', 'SLUG') || extract('KEYWORDS', 'END') || extractToEnd('KEYWORDS')
+  const slugRaw = extract('SLUG', 'END') || extractToEnd('SLUG')
+  const keywords = [...new Set(
+    keywordsRaw.split(/[,，、\n]/).map(k => k.trim()).filter(k => k && k.length <= 20)
+  )].slice(0, MAX_TAGS_PER_POST)
+  // 只接受规范的英文 slug，否则留空，由调用方回退到原来的生成方式
+  const slug = slugRaw.toLowerCase().split('\n')[0].trim()
+    .replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 80).replace(/-$/, '')
   return {
     metaTitle,
     metaDescription,
-    keywords: keywordsRaw.split(/[,，]/).map(k => k.trim()).filter(Boolean),
+    keywords,
+    slug: /^[a-z0-9]+(-[a-z0-9]+){1,}$/.test(slug) ? slug : '',
   }
 }
 

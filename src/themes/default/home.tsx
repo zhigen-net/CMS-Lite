@@ -65,8 +65,9 @@ function HeroCarousel({ post }: { post: Content }) {
             {post.categories[0].name}
           </Link>
         )}
+        {/* 轮播里是最新文章的标题，用 h2；页面唯一的 h1 是站点名（见下方 Hero 区域） */}
         <Link href={href} className="hero-title-link">
-          <h1>{post.title}</h1>
+          <h2 className="hero-title">{post.title}</h2>
         </Link>
         {post.excerpt && <p className="home-hero-desc">{post.excerpt}</p>}
         <div className="hero-meta">
@@ -112,13 +113,14 @@ export default function DefaultHome({ posts, settings, categories = [], category
         .home-hero-fallback { position:absolute; inset:0; background:linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); }
         .home-hero-inner { position:relative; z-index:2; min-height:clamp(480px,68vh,720px); max-width:var(--max-width); margin:0 auto; padding:clamp(3rem,8vw,5rem) 1.5rem clamp(2.5rem,6vw,4rem); display:flex; flex-direction:column; justify-content:flex-end; }
         .hero-cat-badge { display:inline-flex; align-items:center; padding:0.3rem 0.85rem; border-radius:99px; background:var(--color-primary); color:#fff; font-size:0.7rem; font-weight:700; letter-spacing:0.04em; text-decoration:none; margin-bottom:1rem; width:fit-content; }
-        .home-hero h1 { font-family:var(--font-heading); font-size:clamp(1.9rem,5.5vw,3.5rem); font-weight:900; letter-spacing:-0.035em; line-height:1.12; color:#fff; margin-bottom:1rem; max-width:760px; text-shadow:0 2px 12px rgba(0,0,0,0.3); }
+        .home-hero h1, .home-hero .hero-title { font-family:var(--font-heading); font-size:clamp(1.9rem,5.5vw,3.5rem); font-weight:900; letter-spacing:-0.035em; line-height:1.12; color:#fff; margin-bottom:1rem; max-width:760px; text-shadow:0 2px 12px rgba(0,0,0,0.3); }
         .home-hero-desc { font-size:clamp(0.95rem,2vw,1.1rem); color:rgba(255,255,255,0.75); line-height:1.7; max-width:560px; margin-bottom:1.75rem; }
         .hero-meta { display:flex; flex-wrap:wrap; align-items:center; gap:0.75rem; margin-bottom:2rem; }
         .hero-meta-item { font-size:0.82rem; color:rgba(255,255,255,0.6); }
         .hero-meta-dot { color:rgba(255,255,255,0.3); }
         .hero-title-link { text-decoration:none; }
-        .hero-title-link:hover h1 { opacity:0.85; }
+        .hero-title-link:hover .hero-title { opacity:0.85; }
+        .home-sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
         .hero-dots { display:flex; gap:6px; margin-top:1.25rem; }
         .hero-dot { width:6px; height:6px; border-radius:99px; border:none; background:rgba(255,255,255,0.35); cursor:pointer; padding:0; transition:background 0.2s, width 0.2s; }
         .hero-dot.active { background:#fff; width:20px; }
@@ -161,7 +163,10 @@ export default function DefaultHome({ posts, settings, categories = [], category
       {/* ── Hero ── */}
       <section className="home-hero">
         {featured
-          ? <HeroCarousel post={featured} />
+          ? <>
+              <h1 className="home-sr-only">{siteName}{siteDesc ? ` - ${siteDesc}` : ''}</h1>
+              <HeroCarousel post={featured} />
+            </>
           : (
             <>
               <div className="home-hero-fallback" />

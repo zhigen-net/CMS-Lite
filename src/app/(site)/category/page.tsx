@@ -4,6 +4,7 @@ import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getCategories, getTopTags } from '@/lib/db'
 import { getSiteSettings } from '@/lib/config'
 import type { Metadata } from 'next'
+import { alternatesFor } from '@/lib/seo'
 import Link from 'next/link'
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -12,7 +13,8 @@ export async function generateMetadata(): Promise<Metadata> {
     const s = await getSiteSettings(env.DB)
     return {
       title: s['seo.categoryList.title'] || '全部分类',
-      description: s['seo.categoryList.description'] || '',
+      description: s['seo.categoryList.description'] || `${(s['site.name'] as string) || ''}全部分类与热门标签。`,
+      alternates: alternatesFor('/category'),
     }
   } catch { return { title: '全部分类' } }
 }

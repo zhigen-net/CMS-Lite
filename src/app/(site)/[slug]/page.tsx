@@ -4,6 +4,7 @@ import { getSiteSettings } from '@/lib/config'
 import { loadTheme } from '@/lib/theme-loader'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import { alternatesFor } from '@/lib/seo'
 import type { Form } from '@/types'
 import { marked, type Tokens } from 'marked'
 import { preprocessFormShortcodes, processFormEmbeds } from '@/lib/formEmbed'
@@ -27,7 +28,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (page) return {
     title: page.meta_title || page.title,
     description: page.meta_description || page.excerpt || undefined,
-    openGraph: page.og_image ? { images: [page.og_image] } : undefined,
+    alternates: alternatesFor(`/${page.slug}`),
+    openGraph: page.og_image || page.cover_image ? { images: [page.og_image || page.cover_image!] } : undefined,
   }
   const types = await getContentTypes(env.DB)
   const ct = types.find(t => t.slug === slug || t.id === slug)

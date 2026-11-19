@@ -434,7 +434,10 @@ export async function ensureTagsAndGetSlugs(
       result.push({ name: trimmed, slug: existing.slug })
     } else {
       const tagId = crypto.randomUUID().replace(/-/g, '')
-      const slug = trimmed.toLowerCase().replace(/\s+/g, '-').replace(/[^\x00-\x7F]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '') || tagId
+      // 保留中文等文字，生成可读的标签网址（如 /tag/冻卵）；原来去掉非 ASCII 字符后中文标签全部退化成随机 id
+      const base = trimmed.toLowerCase().replace(/\s+/g, '-').replace(/[^\p{L}\p{N}-]/gu, '').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 60)
+      let slug = base || tagId
+      if (base && await db.prepare('SELECT 1 FROM tags WHERE slug = ?').bind(slug).first()) slug = `${base}-${tagId.slice(0, 6)}`
       await db.prepare('INSERT OR IGNORE INTO tags (id, name, slug) VALUES (?, ?, ?)').bind(tagId, trimmed, slug).run()
       result.push({ name: trimmed, slug })
     }

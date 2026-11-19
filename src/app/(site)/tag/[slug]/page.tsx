@@ -4,6 +4,7 @@ import { getSiteSettings } from '@/lib/config'
 import { loadTheme } from '@/lib/theme-loader'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import { alternatesFor } from '@/lib/seo'
 
 const PAGE_SIZE = 12
 
@@ -15,14 +16,18 @@ interface Props {
 // 文章少于这个数的标签页内容单薄：不让搜索引擎收录（noindex），但继续跟踪页面上的文章链接
 const MIN_POSTS_TO_INDEX = 2
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { slug } = await params
+  const { page: pageStr } = await searchParams
+  const page = Math.max(1, parseInt(pageStr ?? '1', 10) || 1)
   const { env } = getCloudflareContext()
   const tag = await getTagBySlug(env.DB, decodeURIComponent(slug))
   if (!tag) return {}
   const count = await countPublishedByTag(env.DB, tag.id)
   return {
-    title: `#${tag.name} · 标签`,
+    title: `#${tag.name} · 标签${page > 1 ? ` - 第 ${page} 页` : ''}`,
+    description: `「${tag.name}」相关的 ${count} 篇文章。`,
+    alternates: alternatesFor(`/tag/${tag.slug}`, page),
     ...(count < MIN_POSTS_TO_INDEX ? { robots: { index: false, follow: true } } : {}),
   }
 }
