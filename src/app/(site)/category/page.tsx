@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { getCloudflareContext } from '@opennextjs/cloudflare'
-import { getCategories, getTagsWithCount } from '@/lib/db'
+import { getCategories, getTopTags } from '@/lib/db'
 import { getSiteSettings } from '@/lib/config'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -21,9 +21,9 @@ export default async function CategoriesIndexPage() {
   const { env } = getCloudflareContext()
   const [categories, tags] = await Promise.all([
     getCategories(env.DB, 'post'),
-    getTagsWithCount(env.DB),
+    getTopTags(env.DB, 30),
   ])
-  const topTags = tags.filter(t => t.count > 0).sort((a, b) => b.count - a.count).slice(0, 30)
+  const topTags = tags
 
   return (
     <main style={{ maxWidth: 'var(--max-width)', margin: '0 auto', padding: 'clamp(2.5rem,6vw,4rem) 1.5rem 6rem' }}>

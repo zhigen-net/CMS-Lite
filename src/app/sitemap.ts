@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
-import { getContents, getCategories, getAllTags } from '@/lib/db'
+import { headers } from 'next/headers'
+import { getCategories, getSitemapContents, getSitemapTags } from '@/lib/db'
 import { getSiteSettings } from '@/lib/config'
 
 export const dynamic = 'force-dynamic'
@@ -8,15 +9,19 @@ export const dynamic = 'force-dynamic'
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const { env } = getCloudflareContext()
-    const [settings, { items: posts }, { items: pages }, categories, tags] = await Promise.all([
+    // 只取网址需要的列（原来读全部文章正文，且文章最多 1000 篇）；标签只放至少 2 篇文章的
+    const [settings, posts, pages, categories, tags] = await Promise.all([
       getSiteSettings(env.DB),
-      getContents(env.DB, { type: 'post', status: 'published', pageSize: 1000 }),
-      getContents(env.DB, { type: 'page', status: 'published', pageSize: 200 }),
+      getSitemapContents(env.DB, 'post'),
+      getSitemapContents(env.DB, 'page', 1000),
       getCategories(env.DB, 'post'),
-      getAllTags(env.DB),
+      getSitemapTags(env.DB, 2),
     ])
 
-    const base = (settings['site.url'] as string) || 'https://localhost'
+    // 后台没填「站点网址」时用当前访问的域名，不再输出 https://localhost
+    const h = await headers()
+    const host = h.get('x-forwarded-host') || h.get('host')
+    const base = (settings['site.url'] as string) || (host ? `https://${host}` : 'https://localhost')
     const url = (path: string) => `${base.replace(/\/$/, '')}${path}`
 
     const entries: MetadataRoute.Sitemap = [

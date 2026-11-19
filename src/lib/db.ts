@@ -130,16 +130,13 @@ export async function getContents(
     params.push(tagId)
   }
 
-  if (search) {
-    const ftsResult = await db
-      .prepare(`SELECT id FROM contents_fts WHERE contents_fts MATCH ? LIMIT 100`)
-      .bind(search)
-      .all<{ id: string }>()
-    const ids = ftsResult.results.map(r => r.id)
-    if (!ids.length) return { items: [], pagination: { page, pageSize, total: 0, totalPages: 0 } }
-    const inClause = ids.map(() => '?').join(',')
-    conditions.push(`c.id IN (${inClause})`)
-    params.push(...ids)
+  const ftsQuery = (search ?? '').split(/\s+/).filter(Boolean).map(w => `"${w.replace(/"/g, '""')}"`).join(' ')
+  if (ftsQuery) {
+    // 用子查询，不把命中的 id 逐个绑定成参数：D1 单条语句最多 100 个绑定参数，
+    // 命中 100 条时再加上类型、状态、分页参数就会报 "too many SQL variables"（搜索页 500）
+    conditions.push(`c.id IN (SELECT id FROM contents_fts WHERE contents_fts MATCH ? LIMIT 100)`)
+    // 每个词各自加引号再交给 FTS5（多个词仍是「都包含」）：用户输入的引号、冒号、AND/OR 等不会被当成查询语法而报错
+    params.push(ftsQuery)
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
@@ -349,6 +346,50 @@ export async function getTagsByContent(db: D1Database, contentId: string): Promi
 
 export async function getAllTags(db: D1Database): Promise<Tag[]> {
   const rows = await db.prepare('SELECT * FROM tags ORDER BY name').all<Tag>()
+  return rows.results
+}
+
+/**
+ * 文章数最多的前 N 个标签（公开页面用）。
+ * 不要在公开页面用 getAllTags / getTagsWithCount：标签多了以后（如几千个），
+ * 每次渲染都把全部标签读出来、甚至全部输出到页面，会让单页 HTML 上 MB、超出 Worker 的 CPU / 内存限制。
+ */
+export async function getTopTags(db: D1Database, limit = 30): Promise<(Tag & { count: number })[]> {
+  const rows = await db.prepare(`
+    SELECT t.*, x.count FROM (
+      SELECT tag_id, COUNT(*) AS count FROM content_tags GROUP BY tag_id ORDER BY count DESC LIMIT ?
+    ) x JOIN tags t ON t.id = x.tag_id
+    ORDER BY x.count DESC, t.name
+  `).bind(limit).all<Tag & { count: number }>()
+  return rows.results
+}
+
+/** 某个标签下已发布文章的数量（走 content_tags(tag_id) 索引） */
+export async function countPublishedByTag(db: D1Database, tagId: string): Promise<number> {
+  const row = await db.prepare(`
+    SELECT COUNT(*) AS n FROM content_tags ct
+    JOIN contents c ON c.id = ct.content_id
+    WHERE ct.tag_id = ? AND c.status = 'published'
+  `).bind(tagId).first<{ n: number }>()
+  return row?.n ?? 0
+}
+
+/** 站点地图用：只取网址需要的列，不读正文 */
+export async function getSitemapContents(db: D1Database, type: string, limit = 50000): Promise<{ slug: string; updated_at: number | null; published_at: number | null }[]> {
+  const rows = await db.prepare(
+    `SELECT slug, updated_at, published_at FROM contents WHERE type = ? AND status = 'published' ORDER BY published_at DESC LIMIT ?`
+  ).bind(type, limit).all<{ slug: string; updated_at: number | null; published_at: number | null }>()
+  return rows.results
+}
+
+/** 站点地图用：有至少 minPosts 篇已发布文章的标签（文章太少的标签页内容单薄，不提交给搜索引擎） */
+export async function getSitemapTags(db: D1Database, minPosts = 2): Promise<{ slug: string }[]> {
+  const rows = await db.prepare(`
+    SELECT t.slug FROM tags t JOIN (
+      SELECT ct.tag_id FROM content_tags ct JOIN contents c ON c.id = ct.content_id
+      WHERE c.status = 'published' GROUP BY ct.tag_id HAVING COUNT(*) >= ?
+    ) x ON x.tag_id = t.id
+  `).bind(minPosts).all<{ slug: string }>()
   return rows.results
 }
 

@@ -1,5 +1,5 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
-import { getContents, getCategories, getTagsWithCount } from '@/lib/db'
+import { getContents, getCategories, getTopTags } from '@/lib/db'
 import { getSiteSettings } from '@/lib/config'
 import { loadTheme } from '@/lib/theme-loader'
 import type { Category, Tag } from '@/types'
@@ -32,15 +32,12 @@ export default async function HomePage({ searchParams }: Props) {
   const [settings, categories, tags, { items: posts, pagination }] = await Promise.all([
     getSiteSettings(env.DB),
     getCategories(env.DB, 'post'),
-    getTagsWithCount(env.DB),
+    getTopTags(env.DB, 20),
     getContents(env.DB, { type: 'post', status: 'published', page, pageSize: PAGE_SIZE }),
   ])
 
   const categoryMap = Object.fromEntries((categories as Category[]).map(c => [c.id, c]))
-  const topTags = (tags as (Tag & { count: number })[])
-    .filter(t => t.count > 0)
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 20)
+  const topTags = tags as (Tag & { count: number })[]
 
   const themeId = settings['theme.active'] as string | undefined
   const theme = await loadTheme(themeId)
